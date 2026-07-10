@@ -1,0 +1,11 @@
+# TorqX-POC's declared minimum versions of the TorqX modules it uses.
+# Checked by di.depcheck at process startup (called from di.torq.init) - see
+# TorqX/di/depcheck/depcheck.md for the format and failure behaviour.
+
+[dependencies]
+"di.torq" = "0.1.0"
+"di.config" = "0.1.0"
+"di.log" = "0.1.0"
+"di.hdb" = "0.1.0"
+"di.servers" = "0.1.0"
+"di.zed" = "0.1.0"

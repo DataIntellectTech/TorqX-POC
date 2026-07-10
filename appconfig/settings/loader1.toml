@@ -1,0 +1,7 @@
+landingdir = ":data/landing"
+headers = ["time", "sym", "price", "size", "stop", "cond", "ex", "side"]
+types = "PSFIBCCS"
+separator = ","
+tablename = "trade"
+dbdir = ":hdb"
+connections = ["hdb"]

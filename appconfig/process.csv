@@ -1,0 +1,3 @@
+host,port,proctype,procname
+localhost,5560,hdb,hdb
+localhost,0,loader,loader1
