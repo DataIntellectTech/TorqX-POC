@@ -1,0 +1,26 @@
+# feed1 settings. A simulated real-time trade/quote feed, ported from the Finance
+# Starter Pack feed (TorQ-Finance-Starter-Pack/code/tick/feed.q). The data-generation
+# literals below are the FSP values (its lines 4-22), lifted into config so the port
+# keeps its code generic. See code/processes/feed.q.
+
+connections = ["tickerplant"]   # proctypes to dial via di.servers/process.csv
+waittimeout = 30000             # ms to block waiting for the tickerplant at startup
+publishperiod = 1               # publish-tick period in SECONDS (di.timer granularity;
+                                # FSP fires every 0.2s - coarser here, same per-tick logic)
+
+# generation constants (FSP feed.q lines 73, 76, 77)
+len = 10000                     # prices generated per batch
+maxn = 15                       # max trades per tick
+qpt = 5                         # avg quotes per trade
+
+# security universe + starting prices (FSP feed.q lines 3-17)
+syms   = ["AMD", "AIG", "AAPL", "DELL", "DOW", "GOOG", "HPQ", "INTC", "IBM", "MSFT"]
+names  = ["ADVANCED MICRO DEVICES", "AMERICAN INTL GROUP INC", "APPLE INC COM STK", "DELL INC", "DOW CHEMICAL CO", "GOOGLE INC CLASS A", "HEWLETT-PACKARD CO", "INTEL CORP", "INTL BUSINESS MACHINES CORP", "MICROSOFT CORP"]
+prices = [33, 27, 84, 12, 20, 72, 36, 51, 42, 29]
+
+# character / symbol domains (FSP feed.q lines 18-22)
+mode = " ABHILNORYZ"            # m: quote mode
+cond = " 89ABCEGJKLNOPRTWZ"     # c: trade condition
+ex   = "NONNONONNN"             # e: exchange, one char per sym (positional)
+src  = ["BARX", "GETGO", "SUN", "DB"]   # src: quote sources
+side = ["buy", "sell"]          # side: trade side

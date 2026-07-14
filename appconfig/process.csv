@@ -1,3 +1,5 @@
 host,port,proctype,procname
+localhost,5010,tickerplant,tickerplant1
 localhost,5560,hdb,hdb
 localhost,0,loader,loader1
+localhost,5020,feed,feed1

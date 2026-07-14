@@ -1,1 +1,6 @@
 connections = []
+
+[logroll]
+enabled = true
+dir = "logs"
+
