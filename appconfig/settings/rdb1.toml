@@ -1,0 +1,12 @@
+# rdb1 settings. Subscribes to the tickerplant, replays the day's log on startup,
+# accumulates live trade/quote in memory, and at end of day writes each table to the HDB
+# and tells the HDB to reload. Schema comes from the tickerplant (via subdetails), not a
+# local database.q. See TorqX/di/rdb.
+
+tickerplanttypes = "tickerplant"   # proctype(s) to subscribe to
+hdbtypes = "hdb"                   # proctype(s) to write to / reload at EOD
+hdbdir = "hdb"                     # HDB root (relative to TORQXAPPHOME) to save partitions into
+replaylog = true                   # replay the tp log on startup to recover intraday state
+tpwaittimeout = 30000              # ms to block waiting for the tickerplant at startup
+# subscribeto / subscribesyms omitted -> all tables, all syms
+# ignorelist omitted -> `heartbeat`logmsg (not saved at EOD)

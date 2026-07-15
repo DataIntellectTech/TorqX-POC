@@ -1,0 +1,14 @@
+# Runtime artifacts — regenerated on every run, never committed.
+
+# Process logs (out_/err_ files and their symlinks)
+logs/
+
+# Tickerplant logs
+tplog/
+
+# HDB partition data written at end of day.
+# Keep the committed seed partition + sym file; ignore everything else
+# (e.g. runtime-written date partitions like 2026.07.14/).
+hdb/*
+!hdb/2015.01.07/
+!hdb/sym
