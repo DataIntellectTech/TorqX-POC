@@ -11,7 +11,12 @@ dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export TORQXHOME="/Users/jgrant/git/TorqX"
 export TORQXAPPCONFIG="$dirpath/appconfig"
+# TORQXAPPHOME = the app's CODE/CONFIG root (database.q schema, code/, appconfig/, deps.toml).
+# TORQXDATAHOME = where RUNTIME DATA is written/read (hdb, tplog, wdb working dir). Splitting
+# them lets data live on a separate (e.g. larger/faster) volume in a real deployment; for this
+# sample app they point at the same place. TorQ makes the same TORQAPPHOME/TORQDATAHOME split.
 export TORQXAPPHOME="$dirpath"
+export TORQXDATAHOME="$dirpath"
 export TORQXSTACKID="torqx-poc"
 export QPATH="$TORQXHOME:/Users/jgrant/git/kdbx-modules"
 

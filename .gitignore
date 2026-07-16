@@ -6,6 +6,9 @@ logs/
 # Tickerplant logs
 tplog/
 
+# WDB working-partition data (written intraday, moved to the hdb at EOD)
+wdb/
+
 # HDB partition data written at end of day.
 # Keep the committed seed partition + sym file; ignore everything else
 # (e.g. runtime-written date partitions like 2026.07.14/).
