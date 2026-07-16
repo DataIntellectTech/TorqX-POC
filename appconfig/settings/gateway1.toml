@@ -1,0 +1,9 @@
+# gateway1 settings. The query front end: connects to the rdb + hdb, and routes a client query
+# across them, joining the results. A client does:
+#   h:hopen`::5050; neg[h](`.gw.asyncexec;"select from trade";`rdb`hdb); h[]
+# and gets the rdb's in-memory (today) trades razed with the hdb's on-disk (historical) trades.
+# Also gates queries during the wdb's EOD reload. See TorqX/di/gateway.
+
+backendtypes = "rdb hdb"   # proctype(s) to connect to and route queries across
+# synccallsallowed omitted -> false (deferred-sync / async only)
+# errorprefix omitted -> "error: "

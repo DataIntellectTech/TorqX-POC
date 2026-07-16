@@ -5,3 +5,4 @@ localhost,0,loader,loader1
 localhost,5020,feed,feed1
 localhost,5030,rdb,rdb1
 localhost,5040,wdb,wdb1
+localhost,5050,gateway,gateway1
