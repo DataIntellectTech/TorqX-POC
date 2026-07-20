@@ -3,7 +3,7 @@
 # TorqX/di/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
-"di.torq" = "0.1.0"
+"di.torq" = "0.2.0"
 "di.config" = "0.1.0"
 "di.log" = "0.1.0"
 "di.hdb" = "0.1.0"
