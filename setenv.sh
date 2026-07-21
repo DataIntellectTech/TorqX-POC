@@ -9,7 +9,10 @@
 # unlike $0, which reflects the outermost script/shell, not the sourced file.
 dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export TORQXHOME="/Users/jgrant/git/TorqX"
+# TORQXHOME = the TorqX FRAMEWORK checkout (its bin/ launcher + di/ modules), NOT this app.
+# Default assumes TorqX is a sibling of this project (TorqX/, TorqX-POC/, kdbx-modules/ all under
+# one parent). If TorqX is installed elsewhere, set this to that absolute path (and adjust QPATH).
+export TORQXHOME="$dirpath/../TorqX"
 export TORQXAPPCONFIG="$dirpath/appconfig"
 # TORQXAPPHOME = the app's CODE/CONFIG root (database.q schema, code/, appconfig/, deps.toml).
 # TORQXDATAHOME = where RUNTIME DATA is written/read (hdb, tplog, wdb working dir). Splitting
@@ -18,7 +21,7 @@ export TORQXAPPCONFIG="$dirpath/appconfig"
 export TORQXAPPHOME="$dirpath"
 export TORQXDATAHOME="$dirpath"
 export TORQXSTACKID="torqx-poc"
-export QPATH="$TORQXHOME:/Users/jgrant/git/kdbx-modules"
+export QPATH="$TORQXHOME:$dirpath/../kdbx-modules"
 
 # put torqx.sh (and any other future bin/ scripts) on PATH, so it's runnable as
 # `torqx.sh ...` from the project directory instead of needing the full path. Guarded

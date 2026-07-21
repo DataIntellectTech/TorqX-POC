@@ -6,8 +6,7 @@
 
 / normalizes to a symbol whether the settings value came from a .q file (already
 / a symbol, e.g. dbdir:`:hdb) or a .toml one (di.toml gives plain q strings, since
-/ TOML has no symbol type). `$ is NOT idempotent on an already-symbol input (it
-/ throws 'type), so the type check matters here, not just cosmetic.
+/ TOML has no symbol type). 
 assym:{[x] $[11h=abs type x;x;`$x]}
 
 / same reasoning as assym, the other direction: `string` is NOT idempotent on an
