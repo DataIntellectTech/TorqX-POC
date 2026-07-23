@@ -137,10 +137,11 @@ init:{[config;deps]
   srcmap::s!skewitems[srcweight;] each cnt#enlist src;
   batch len;          / prime the first batch (FSP line 74)
 
-  / connect to the tickerplant via di.servers, blocking until it is up (di.torq
-  / divergence from FSP's .servers.startupdepcycles + gethandlebytype[`segmentedtickerplant])
-  svc::use`di.servers;
-  (svc`init)[config;deps];
+  / connect to the tickerplant via the INJECTED di.servers, blocking until it is up (di.torq
+  / divergence from FSP's .servers.startupdepcycles + gethandlebytype[`segmentedtickerplant]).
+  / di.torq already init'd servers (shared registry); a custom process gets it in `deps` for
+  / free, exactly like the built-in modules - so we only call startup with our own connections.
+  svc::deps`servers;
   (svc`startup)[config];
   timeout:$[`waittimeout in key config;"j"$config`waittimeout;30000];
   if[not (svc`waitfortype)[`tickerplant;timeout;500];

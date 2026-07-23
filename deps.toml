@@ -3,17 +3,17 @@
 # TorqX/di/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
-"di.torq" = "0.2.0"
+"di.torq" = "0.4.0"
 "di.config" = "0.1.0"
 "di.log" = "0.1.0"
 "di.hdb" = "0.1.0"
-"di.servers" = "0.2.0"
+"di.servers" = "0.3.0"
 "di.zed" = "0.1.0"
 "di.tickerplant" = "0.1.0"
 "di.tplog" = "0.1.0"
-"di.rdb" = "0.2.0"
-"di.wdb" = "0.1.0"
-"di.gateway" = "0.1.0"
+"di.rdb" = "0.3.0"
+"di.wdb" = "0.2.0"
+"di.gateway" = "0.2.0"
 "di.asyncdispatch" = "0.1.0"
 "di.serverselect" = "0.1.0"
 "di.dataaccess" = "0.2.0"

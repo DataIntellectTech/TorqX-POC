@@ -57,11 +57,15 @@ loadall:{[]
   notifyhdb[];
   }
 
-/ alias, not a rename - loadall keeps its descriptive name for direct/manual
-/ re-triggering, run exists purely so di.torq's optional post-init hook convention
-/ (see di/torq/torq.q's runhook) picks it up automatically when the generic launcher
-/ starts this process type.
-run:loadall;
+/ run is the di.torq post-init one-shot hook (see di/torq/torq.q's runhook); it loads
+/ then EXITS. The loader is a one-shot batch process: it has no listening port and,
+/ once notifyhdb opens a di.servers handle to the hdb, that persistent handle is enough
+/ to keep q alive with nothing to do (early portless/handleless versions exited on their
+/ own simply because nothing was left to poll - that is not a contract to rely on). An
+/ explicit exit makes "load then terminate" deterministic regardless of open handles.
+/ The exit lives HERE, not in loadall, so loadall keeps its descriptive name and stays
+/ re-triggerable by hand in a console (`.loader.loadall[]`) without killing the session.
+run:{[] loadall[]; exit 0};
 
 / tell the hdb to reload, if one is configured in `connections. Uses di.servers for
 / connection management (process.csv-driven) rather than a raw hopen.
@@ -69,8 +73,9 @@ notifyhdb:{[]
   if[0=count cfg`connections;
     logdep[`info][`loader;"no connections configured, skipping hdb notification"];
     :()];
-  svcmod:use`di.servers;
-  (svcmod`init)[cfg;alldeps];
+  / injected di.servers (di.torq ran its init; a custom process receives it in deps just like
+  / a built-in module) - we only start it with our own connections, then look up the hdb handle.
+  svcmod:alldeps`servers;
   (svcmod`startup)[cfg];
   wh:(svcmod`gethandlebytype)[`hdb;`any];
   if[null wh;

@@ -285,7 +285,10 @@ sed -n '103,158p' code/processes/feed.q
   is the merged settings dict (from `feed1.toml`); `deps` is the DI dict (`log`/`timer`/`handlers`).
 - **Optional: `.<proctype>.run[]`** — a post-init one-shot hook di.torq calls if present (skippable
   with `-norun`). `feed.q` has **no** run hook (it schedules its own timer job in `init`);
-  `loader.q` *does* define one (`run:loadall`), which is how the loader fires its one-shot load.
+  `loader.q` *does* define one (`run:{[] loadall[]; exit 0}`), which is how the loader fires its
+  one-shot load and then terminates — it has no listening port and holds an hdb handle open after
+  `notifyhdb`, so without the explicit `exit` q would sit idle forever; hence it correctly reports
+  `down` once complete. `loadall` itself has no exit, so it stays re-triggerable by hand in a console.
 
 **Where it interfaces with TorqX** (the di.torq-forced divergences from the FSP original, all
 commented in the file):
