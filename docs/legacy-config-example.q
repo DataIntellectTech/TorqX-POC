@@ -1,4 +1,4 @@
-/ Legacy .q settings example - di.config STILL supports .q settings files. The cascade
+/ Legacy .q settings example - di.torq.config STILL supports .q settings files. The cascade
 / (di/config/config.q:mergetier) tries "<tier>.q" then "<tier>.toml" for every tier, so .q
 / and .toml can even coexist mid-migration; .toml wins on a key clash. This file is the .q
 / equivalent of appconfig/settings/rdb1.toml.

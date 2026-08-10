@@ -12,7 +12,7 @@
 /   1. everything lives under \d .feed (custom-process convention), not root.
 /   2. the literals of FSP lines 4-22 (syms/names/prices/mode/cond/ex/src/side) and the
 /      len/maxn/qpt constants are read from feed1.toml, matching the FSP values exactly.
-/   3. connection is via di.servers (init/startup/waitfortype/gethandlebytype, proctype
+/   3. connection is via di.torq.servers (init/startup/waitfortype/gethandlebytype, proctype
 /      `tickerplant) instead of .servers.startupdepcycles + .servers.gethandlebytype
 /      [`segmentedtickerplant;`any].
 /   4. publishing is scheduled via the injected di.timer (whole-second granularity)
@@ -20,7 +20,7 @@
 /      per-fire feed[] logic (and thus every volume/price relationship) is unchanged.
 /   5. FSP's `init` (a manual historical-backfill routine) is renamed `backfill` here,
 /      because di.torq requires .feed.init to be the [config;deps] process entry point.
-/ The trade/quote batches carry NO time column; di.tickerplant.upd stamps time itself
+/ The trade/quote batches carry NO time column; di.proc.tickerplant.upd stamps time itself
 / (keeping replay idempotent), exactly matching what the FSP tickerplant does with .u.upd.
 
 \d .feed
@@ -87,7 +87,7 @@ feed:{h$[rand 2;
  (".u.upd";`quote;q 1+rand qpt*maxn)];}
 
 / same, but prepending an explicit timestamp column - used by backfill (FSP lines 94-96).
-/ di.tickerplant.upd keeps a leading timestamp as-is, so backfilled history stays put.
+/ di.proc.tickerplant.upd keeps a leading timestamp as-is, so backfilled history stays put.
 feedm:{h$[rand 2;
  (".u.upd";`trade;(enlist a#x),t a:1+rand maxn);
  (".u.upd";`quote;(enlist a#x),q a:1+rand qpt*maxn)];}
@@ -137,7 +137,7 @@ init:{[config;deps]
   srcmap::s!skewitems[srcweight;] each cnt#enlist src;
   batch len;          / prime the first batch (FSP line 74)
 
-  / connect to the tickerplant via the INJECTED di.servers, blocking until it is up (di.torq
+  / connect to the tickerplant via the INJECTED di.torq.servers, blocking until it is up (di.torq
   / divergence from FSP's .servers.startupdepcycles + gethandlebytype[`segmentedtickerplant]).
   / di.torq already init'd servers (shared registry); a custom process gets it in `deps` for
   / free, exactly like the built-in modules - so we only call startup with our own connections.

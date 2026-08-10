@@ -27,8 +27,8 @@ export QPATH="$TORQXHOME:$dirpath/../kdbx-modules"
 # `torqx.sh ...` from the project directory instead of needing the full path. Guarded
 # so re-sourcing setenv.sh (e.g. while iterating on it) doesn't keep growing PATH.
 case ":$PATH:" in
-  *":$TORQXHOME/bin:"*) ;;
-  *) export PATH="$TORQXHOME/bin:$PATH" ;;
+  *":$TORQXHOME/di/torq/bin:"*) ;;
+  *) export PATH="$TORQXHOME/di/torq/bin:$PATH" ;;
 esac
 
 if [ -z "$QCMD" ]; then
@@ -36,4 +36,4 @@ if [ -z "$QCMD" ]; then
 fi
 export QCMD
 
-alias torqx="QINIT=\$TORQXHOME/bin/torqx_init.q \$QCMD"
+alias torqx="QINIT=\$TORQXHOME/di/torq/bin/torqx_init.q \$QCMD"

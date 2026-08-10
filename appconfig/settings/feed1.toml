@@ -3,7 +3,7 @@
 # literals below are the FSP values (its lines 4-22), lifted into config so the port
 # keeps its code generic. See code/processes/feed.q.
 
-connections = ["tickerplant"]   # proctypes to dial via di.servers/process.csv
+connections = ["tickerplant"]   # proctypes to dial via di.torq.servers/process.csv
 waittimeout = 30000             # ms to block waiting for the tickerplant at startup
 publishperiod = 1               # publish-tick period in SECONDS (di.timer granularity;
                                 # FSP fires every 0.2s - coarser here, same per-tick logic)

@@ -27,7 +27,7 @@ are already installed on the machine; we clone only the app.
 
 ```
 <parent>/
-├── TorqX/          # the framework: bin/torqx.sh, bin/torqx_init.q, di/<module>/...   (installed)
+├── TorqX/          # the framework: di/torq/bin/torqx.sh, di/torq/bin/torqx_init.q, di/<module>/...   (installed)
 ├── kdbx-modules/   # upstream kdb-x modules: di.timer, di.tz, di.tplogutils, ...      (installed)
 └── TorqX-POC/      # THE APP we are demoing                                            (we clone this)
 ```
@@ -157,7 +157,7 @@ ls /tmp/torqx_torqx-poc_*.log
 tail -5 /tmp/torqx_torqx-poc_gateway1.log
 ```
 
-**Log rolling (`di.logroll`).** An opt-in module (a design delta from the plan, which folded
+**Log rolling (`di.torq.logroll`).** An opt-in module (a design delta from the plan, which folded
 rolling into eodtime — see the POC status page). A process turns it on with a `[logroll]` section;
 absent/disabled is a silent no-op. Here the **hdb** opts in:
 
@@ -189,7 +189,7 @@ production) initially owned fd 1/2 — so it works the same in both launch modes
 ## 4. The `QINIT` entry point (`torqx_init.q`)
 
 TorqX has **no per-process launcher files** (`start_<name>.q`). One generic entry point,
-`TorqX/bin/torqx_init.q`, is loaded on demand via kdb's `QINIT` and turns a plain q session into a
+`TorqX/di/torq/bin/torqx_init.q`, is loaded on demand via kdb's `QINIT` and turns a plain q session into a
 TorqX process. Show that the TorqX command-line params mean nothing to q on their own:
 
 ```bash
@@ -204,7 +204,7 @@ EOF
 ```
 
 The args just sit unparsed in `.z.x`. Now set `QINIT` (the `torqx` alias in setenv.sh does exactly
-this: `QINIT=$TORQXHOME/bin/torqx_init.q $QCMD`) and the same args make the process resolve its
+this: `QINIT=$TORQXHOME/di/torq/bin/torqx_init.q $QCMD`) and the same args make the process resolve its
 identity, run the config cascade, build the DI deps, and start the process module — dropping you at
 a live `q)` console for that process:
 
@@ -218,8 +218,8 @@ torqx -proctype hdb -procname hdb -p 5599     # explicit identity, spare port (t
 ```
 
 > **Note (ties to §3).** The hdb has `[logroll] enabled=true`. When **backgrounded** (`torqx.sh
-> start`, §3) `di.logroll` redirects the console to `logs/` — correct for a daemon. When run
-> **interactively** like this, `di.logroll`'s TTY guard detects the terminal and *skips* the
+> start`, §3) `di.torq.logroll` redirects the console to `logs/` — correct for a daemon. When run
+> **interactively** like this, `di.torq.logroll`'s TTY guard detects the terminal and *skips* the
 > redirect (the `WARN` line above), so you keep a usable console. (Any non-logroll proctype —
 > gateway, rdb, tickerplant, … — has a normal console in both cases.)
 
@@ -296,7 +296,7 @@ commented in the file):
 - **Injected log**: `logdep::deps\`log; logdep[\`info][\`feed;"..."]` (lines 110, 155) — not `.lg.o`.
 - **Injected timer**: `(deps[\`timer]\`addjob)[\`feedpublish;\`.feed.feed;();period;1h;()!()]` (line
   153) — not `.timer.repeat`.
-- **Connections via `di.servers`** (lines 142–148): `svc:use\`di.servers; (svc\`init)[config;deps];
+- **Connections via `di.torq.servers`** (lines 142–148): `svc:use\`di.torq.servers; (svc\`init)[config;deps];
   (svc\`startup)[config];` then **`(svc\`waitfortype)[\`tickerplant;timeout;500]`** (block until the
   TP is up — the modular equivalent of `.servers.startupdepcycles`) and
   `(svc\`gethandlebytype)[\`tickerplant;\`any]`.
@@ -313,11 +313,11 @@ commented in the file):
 it can run arbitrary q at load. That's not hypothetical: in the FSP itself,
 `settings/segmentedchainedtickerplant.q` has a live conditional and `settings/default.q` has a bare
 `system"c ..."`. Config that can *execute* is a footgun for an ops/config boundary. TorqX adds a
-**`di.toml`** parser and makes **TOML the documented default**: inert data, comment-friendly, maps
+**`di.util.toml`** parser and makes **TOML the documented default**: inert data, comment-friendly, maps
 cleanly onto the flat/sectioned settings shape. (Chosen over YAML: no native q parser for either,
 and TOML's grammar is far more tractable to hand-build correctly.) `.q` remains fully supported.
 
-**The cascade.** `di.config` merges, later tiers overriding earlier:
+**The cascade.** `di.torq.config` merges, later tiers overriding earlier:
 `builtin/default → builtin/<proctype> → app/default → app/<proctype> → app/<procname>` — and for
 each tier it tries **`.q` first, then `.toml`** (so the two can coexist mid-migration; `.toml` wins
 a clash).
@@ -345,7 +345,7 @@ grep "publishing every" /tmp/torqx_torqx-poc_feed1.log | tail -1
 
 ```bash
 q -q <<'EOF'
-cfg:use`di.config;
+cfg:use`di.torq.config;
 -1 "--- .q settings (symbols) ---"; show cfg.parsefile "docs/legacy-config-example.q";
 -1 "--- .toml settings (strings) ---"; show cfg.parsefile "appconfig/settings/rdb1.toml";
 \\
@@ -375,26 +375,26 @@ cat $TORQXHOME/di/rdb/VERSION $TORQXHOME/di/gateway/VERSION
 #> 0.1.0
 sed -n '5,22p' deps.toml
 #> [dependencies]
-#> "di.torq" = "0.2.0"   "di.rdb" = "0.2.0"   "di.gateway" = "0.1.0"   ...
+#> "di.torq" = "0.2.0"   "di.proc.rdb" = "0.2.0"   "di.proc.gateway" = "0.1.0"   ...
 ```
 
-`di.depcheck` runs at the very start of `di.torq.init` (before identity, config, or any module
+`di.torq.depcheck` runs at the very start of `di.torq.init` (before identity, config, or any module
 load), resolves each declared module on `QPATH`, reads its `VERSION`, and enforces the minimum —
 collecting **all** failures before reporting. Demonstrate an unsatisfiable dependency:
 
 ```bash
 # bump a dep to a version that doesn't exist yet:
-sed -i 's/"di.rdb" = "0.2.0"/"di.rdb" = "0.3.0"/' deps.toml
+sed -i 's/"di.proc.rdb" = "0.2.0"/"di.proc.rdb" = "0.3.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        down            # <- refused to start
 tail -4 /tmp/torqx_torqx-poc_rdb1.log
 #> 'DEPENDENCY CHECK FAILED:
-#>   di.rdb requires minimum version 0.3.0, found 0.2.0
-#>   [1]  \l .../TorqX/bin/torqx_init.q
+#>   di.proc.rdb requires minimum version 0.3.0, found 0.2.0
+#>   [1]  \l .../TorqX/di/torq/bin/torqx_init.q
 
 # revert and it starts clean again:
-sed -i 's/"di.rdb" = "0.3.0"/"di.rdb" = "0.2.0"/' deps.toml
+sed -i 's/"di.proc.rdb" = "0.3.0"/"di.proc.rdb" = "0.2.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        up    pid=...

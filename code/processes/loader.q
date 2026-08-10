@@ -5,7 +5,7 @@
 \d .loader
 
 / normalizes to a symbol whether the settings value came from a .q file (already
-/ a symbol, e.g. dbdir:`:hdb) or a .toml one (di.toml gives plain q strings, since
+/ a symbol, e.g. dbdir:`:hdb) or a .toml one (di.util.toml gives plain q strings, since
 / TOML has no symbol type). 
 assym:{[x] $[11h=abs type x;x;`$x]}
 
@@ -38,7 +38,7 @@ loadall:{[]
   / a single-char string LITERAL (e.g. ",") is auto-atomized by q at compile time
   / (type -10h), which `enlist` alone correctly restores to a proper 1-char vector -
   / that was true for the old .q settings (parsed via `value`, so the literal's
-  / compile-time atomization applied). di.toml's runtime-built strings are never
+  / compile-time atomization applied). di.util.toml's runtime-built strings are never
   / atomized this way even when logically 1 character (type 10h already), so
   / blindly enlist-ing double-wraps them. Only enlist a genuine atom.
   sep:$[0>type cfg`separator;enlist cfg`separator;cfg`separator];
@@ -59,7 +59,7 @@ loadall:{[]
 
 / run is the di.torq post-init one-shot hook (see di/torq/torq.q's runhook); it loads
 / then EXITS. The loader is a one-shot batch process: it has no listening port and,
-/ once notifyhdb opens a di.servers handle to the hdb, that persistent handle is enough
+/ once notifyhdb opens a di.torq.servers handle to the hdb, that persistent handle is enough
 / to keep q alive with nothing to do (early portless/handleless versions exited on their
 / own simply because nothing was left to poll - that is not a contract to rely on). An
 / explicit exit makes "load then terminate" deterministic regardless of open handles.
@@ -67,13 +67,13 @@ loadall:{[]
 / re-triggerable by hand in a console (`.loader.loadall[]`) without killing the session.
 run:{[] loadall[]; exit 0};
 
-/ tell the hdb to reload, if one is configured in `connections. Uses di.servers for
+/ tell the hdb to reload, if one is configured in `connections. Uses di.torq.servers for
 / connection management (process.csv-driven) rather than a raw hopen.
 notifyhdb:{[]
   if[0=count cfg`connections;
     logdep[`info][`loader;"no connections configured, skipping hdb notification"];
     :()];
-  / injected di.servers (di.torq ran its init; a custom process receives it in deps just like
+  / injected di.torq.servers (di.torq ran its init; a custom process receives it in deps just like
   / a built-in module) - we only start it with our own connections, then look up the hdb handle.
   svcmod:alldeps`servers;
   (svcmod`startup)[cfg];
