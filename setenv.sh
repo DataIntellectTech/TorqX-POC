@@ -9,10 +9,12 @@
 # unlike $0, which reflects the outermost script/shell, not the sourced file.
 dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# TORQXHOME = the TorqX FRAMEWORK checkout (its bin/ launcher + di/ modules), NOT this app.
-# Default assumes TorqX is a sibling of this project (TorqX/, TorqX-POC/, kdbx-modules/ all under
-# one parent). If TorqX is installed elsewhere, set this to that absolute path (and adjust QPATH).
-export TORQXHOME="$dirpath/../TorqX"
+# TORQXHOME = the FRAMEWORK checkout (its di/torq/bin launcher + di/ modules), NOT this app.
+# This is now kdbx-modules (branch feature-torqx), the RFC-0001 consolidation base - the whole
+# framework resolves from there and the legacy TorqX checkout is no longer used at all.
+# Default assumes kdbx-modules is a sibling of this project; if it lives elsewhere, set this to
+# that absolute path.
+export TORQXHOME="$dirpath/../kdbx-modules"
 export TORQXAPPCONFIG="$dirpath/appconfig"
 # TORQXAPPHOME = the app's CODE/CONFIG root (database.q schema, code/, appconfig/, deps.toml).
 # TORQXDATAHOME = where RUNTIME DATA is written/read (hdb, tplog, wdb working dir). Splitting
@@ -21,7 +23,9 @@ export TORQXAPPCONFIG="$dirpath/appconfig"
 export TORQXAPPHOME="$dirpath"
 export TORQXDATAHOME="$dirpath"
 export TORQXSTACKID="torqx-poc"
-export QPATH="$TORQXHOME:$dirpath/../kdbx-modules"
+# QPATH resolves di.* modules (colon-separated, first match wins). Everything the app needs is in
+# TORQXHOME; $HOME/.kx/mod supplies the KX-shipped modules (kx.log).
+export QPATH="$TORQXHOME:$HOME/.kx/mod"
 
 # put torqx.sh (and any other future bin/ scripts) on PATH, so it's runnable as
 # `torqx.sh ...` from the project directory instead of needing the full path. Guarded

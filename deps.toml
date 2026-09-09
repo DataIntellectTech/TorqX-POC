@@ -1,6 +1,6 @@
 # TorqX-POC's declared minimum versions of the TorqX modules it uses.
-# Checked by di.depcheck at process startup (called from di.torq.init) - see
-# TorqX/di/depcheck/depcheck.md for the format and failure behaviour.
+# Checked by di.torq.depcheck at process startup (called from di.torq.init) - see
+# kdbx-modules/di/torq/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
 "di.torq" = "0.4.0"
@@ -10,7 +10,9 @@
 "di.torq.servers" = "0.3.0"
 "di.torq.handlers" = "0.1.0"
 "di.proc.tickerplant" = "0.1.0"
-"di.tplog" = "0.1.0"
+# the tp-log lifecycle module. Renamed di.tplog -> di.tplogmgr during the kdbx-modules
+# consolidation, to resolve the collision with kdbx's own di.tplog (log check/repair).
+"di.tplogmgr" = "0.1.0"
 "di.proc.rdb" = "0.3.0"
 "di.proc.wdb" = "0.2.0"
 "di.proc.gateway" = "0.2.0"
