@@ -22,14 +22,13 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 
 ## 0. Prerequisites & layout
 
-TorqX ships as **three** repos. For the demo, TorqX (framework) and kdbx-modules (upstream deps)
-are already installed on the machine; we clone only the app.
+TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses,
+branch `feature-torqx`) is already installed on the machine; we clone only the app.
 
 ```
 <parent>/
-├── TorqX/          # the framework: di/torq/bin/torqx.sh, di/torq/bin/torqx_init.q, di/<module>/...   (installed)
-├── kdbx-modules/   # upstream kdb-x modules: di.timer, di.tz, di.tplogutils, ...      (installed)
-└── TorqX-POC/      # THE APP we are demoing                                            (we clone this)
+├── kdbx-modules/   # the framework + modules: di/torq/bin/torqx.sh, di/torq/bin/torqx_init.q, di/<module>/...   (installed)
+└── TorqX-POC/      # THE APP we are demoing                                                          (we clone this)
 ```
 
 The framework checkout is **never copied into the project** — the app is just config + a little
@@ -42,7 +41,7 @@ custom code, and points at the installed framework via one env var (§1).
 **Clone the app:**
 
 ```bash
-cd <parent>                       # the dir containing TorqX/ and kdbx-modules/
+cd <parent>                       # the dir containing kdbx-modules/
 git clone <url>/TorqX-POC.git
 cd TorqX-POC
 ```
@@ -53,10 +52,10 @@ The only thing setenv.sh can't infer is **where the framework is installed**:
 
 ```bash
 # setenv.sh — the one line an installer sets:
-export TORQXHOME="$dirpath/../TorqX"     # sibling layout (default). If TorqX is installed
-                                         # elsewhere, use its absolute path and adjust QPATH.
-# QPATH then resolves the framework + upstream modules:
-export QPATH="$TORQXHOME:$dirpath/../kdbx-modules"
+export TORQXHOME="$dirpath/../kdbx-modules"   # sibling layout (default). If kdbx-modules is
+                                              # installed elsewhere, use its absolute path.
+# QPATH then resolves every di.* module from there (plus the KX-shipped modules):
+export QPATH="$TORQXHOME:$HOME/.kx/mod"
 ```
 
 Everything else in `setenv.sh` is generic (no user/host paths). `TORQXDATAHOME` is split out from
@@ -133,7 +132,7 @@ finds everything where they expect it.
 
 | Aspect | FSP | TorqX-POC |
 |---|---|---|
-| Framework code | copied into the project (`code/`) | **zero-copy** — points at installed `TorqX/` via `TORQXHOME` |
+| Framework code | copied into the project (`code/`) | **zero-copy** — points at installed `kdbx-modules/` via `TORQXHOME` |
 | Settings format | `.q` (executable) | **`.toml`** (inert data) — `.q` still supported (§7) |
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
@@ -189,7 +188,7 @@ production) initially owned fd 1/2 — so it works the same in both launch modes
 ## 4. The `QINIT` entry point (`torqx_init.q`)
 
 TorqX has **no per-process launcher files** (`start_<name>.q`). One generic entry point,
-`TorqX/di/torq/bin/torqx_init.q`, is loaded on demand via kdb's `QINIT` and turns a plain q session into a
+`kdbx-modules/di/torq/bin/torqx_init.q`, is loaded on demand via kdb's `QINIT` and turns a plain q session into a
 TorqX process. Show that the TorqX command-line params mean nothing to q on their own:
 
 ```bash
@@ -370,12 +369,12 @@ a pre-flight check is that it shouldn't require *loading* the module, and manife
 executable, same reasoning as §7.)
 
 ```bash
-cat $TORQXHOME/di/rdb/VERSION $TORQXHOME/di/gateway/VERSION
+cat $TORQXHOME/di/torq/proc/rdb/VERSION $TORQXHOME/di/torq/proc/gateway/VERSION
+#> 0.3.0
 #> 0.2.0
-#> 0.1.0
 sed -n '5,22p' deps.toml
 #> [dependencies]
-#> "di.torq" = "0.2.0"   "di.proc.rdb" = "0.2.0"   "di.proc.gateway" = "0.1.0"   ...
+#> "di.torq" = "0.4.0"   "di.torq.proc.rdb" = "0.3.0"   "di.torq.proc.gateway" = "0.2.0"   ...
 ```
 
 `di.torq.depcheck` runs at the very start of `di.torq.init` (before identity, config, or any module
@@ -384,17 +383,17 @@ collecting **all** failures before reporting. Demonstrate an unsatisfiable depen
 
 ```bash
 # bump a dep to a version that doesn't exist yet:
-sed -i 's/"di.proc.rdb" = "0.2.0"/"di.proc.rdb" = "0.3.0"/' deps.toml
+sed -i 's/"di.torq.proc.rdb" = "0.3.0"/"di.torq.proc.rdb" = "0.4.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        down            # <- refused to start
 tail -4 /tmp/torqx_torqx-poc_rdb1.log
 #> 'DEPENDENCY CHECK FAILED:
-#>   di.proc.rdb requires minimum version 0.3.0, found 0.2.0
-#>   [1]  \l .../TorqX/di/torq/bin/torqx_init.q
+#>   di.torq.proc.rdb requires minimum version 0.4.0, found 0.3.0
+#>   [1]  \l .../kdbx-modules/di/torq/bin/torqx_init.q
 
 # revert and it starts clean again:
-sed -i 's/"di.proc.rdb" = "0.3.0"/"di.proc.rdb" = "0.2.0"/' deps.toml
+sed -i 's/"di.torq.proc.rdb" = "0.4.0"/"di.torq.proc.rdb" = "0.3.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        up    pid=...

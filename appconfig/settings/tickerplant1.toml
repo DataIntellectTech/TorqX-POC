@@ -1,4 +1,4 @@
-# tickerplant1 settings. Schema comes from the app's database.q (di.proc.tickerplant's
+# tickerplant1 settings. Schema comes from the app's database.q (di.torq.proc.tickerplant's
 # default schemafile). eodtime rolls at GMT midnight by default (rolltimezone /
 # datatimezone / rolltimeoffset omitted).
 

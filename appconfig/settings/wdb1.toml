@@ -2,7 +2,7 @@
 # during the day incrementally writes trade/quote to a TEMP partition as they fill. At end of
 # day it flushes what remains, sorts each partition, moves it into the HDB, and reloads the HDB
 # and RDB (rdb1 runs reloadenabled, so it drops its prior day on the reload). Schema comes from
-# the tickerplant (via subdetails), not a local database.q. See TorqX/di/wdb.
+# the tickerplant (via subdetails), not a local database.q. See kdbx-modules/di/torq/proc/wdb.
 
 tickerplanttypes = "tickerplant"   # proctype(s) to subscribe to
 hdbtypes = "hdb"                   # proctype(s) to move partitions to / reload at EOD

@@ -20,7 +20,7 @@
 /      per-fire feed[] logic (and thus every volume/price relationship) is unchanged.
 /   5. FSP's `init` (a manual historical-backfill routine) is renamed `backfill` here,
 /      because di.torq requires .feed.init to be the [config;deps] process entry point.
-/ The trade/quote batches carry NO time column; di.proc.tickerplant.upd stamps time itself
+/ The trade/quote batches carry NO time column; di.torq.proc.tickerplant.upd stamps time itself
 / (keeping replay idempotent), exactly matching what the FSP tickerplant does with .u.upd.
 
 \d .feed
@@ -87,7 +87,7 @@ feed:{h$[rand 2;
  (".u.upd";`quote;q 1+rand qpt*maxn)];}
 
 / same, but prepending an explicit timestamp column - used by backfill (FSP lines 94-96).
-/ di.proc.tickerplant.upd keeps a leading timestamp as-is, so backfilled history stays put.
+/ di.torq.proc.tickerplant.upd keeps a leading timestamp as-is, so backfilled history stays put.
 feedm:{h$[rand 2;
  (".u.upd";`trade;(enlist a#x),t a:1+rand maxn);
  (".u.upd";`quote;(enlist a#x),q a:1+rand qpt*maxn)];}

@@ -2,7 +2,7 @@
 # accumulates live trade/quote in memory. This deployment runs ALONGSIDE a wdb (wdb1), so
 # reloadenabled is true: the wdb owns the EOD writedown, and the rdb keeps the prior day live
 # until the wdb calls reload[date] (dropping exactly the prior day). Schema comes from the
-# tickerplant (via subdetails), not a local database.q. See TorqX/di/rdb.
+# tickerplant (via subdetails), not a local database.q. See kdbx-modules/di/torq/proc/rdb.
 
 tickerplanttypes = "tickerplant"   # proctype(s) to subscribe to
 hdbtypes = "hdb"                   # proctype(s) to reload at EOD (the wdb triggers the actual reload)
