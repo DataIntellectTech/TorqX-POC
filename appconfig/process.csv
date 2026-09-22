@@ -1,8 +1,10 @@
 host,port,proctype,procname
-localhost,5010,tickerplant,tickerplant1
-localhost,5560,hdb,hdb
+localhost,5300,tickerplant,tickerplant1
+localhost,5301,chainedtp,chainedtp1
+localhost,5302,hdb,hdb
 localhost,0,loader,loader1
-localhost,5020,feed,feed1
-localhost,5030,rdb,rdb1
-localhost,5040,wdb,wdb1
-localhost,5050,gateway,gateway1
+localhost,5303,feed,feed1
+localhost,5304,rdb,rdb1
+localhost,5305,wdb,wdb1
+localhost,5306,gateway,gateway1
+localhost,5307,discovery,discovery1

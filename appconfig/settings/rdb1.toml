@@ -13,3 +13,15 @@ reloadenabled = true               # wdb-fronted: defer the writedown to the wdb
                                    # day on the wdb's reload[] call (set false for a standalone rdb)
 # subscribeto / subscribesyms omitted -> all tables, all syms
 # ignorelist omitted -> `heartbeat`logmsg
+
+# --- service discovery (consumer) -------------------------------------------------------
+# Opts this process in to discovery. Handled generically by di.torq >= 0.6.0, NOT by the rdb
+# module: di.torq dials the discovery row of process.csv itself and subscribes on our behalf,
+# re-subscribing every 10s so a reconnect self-heals. From then on discovery1 PUSHES live rows
+# into this process's own .torq.servers registry - we never dial the discovered process's
+# phone book, and never self-register.
+#
+# `discoverywant` (rather than listing `discovery` in `connections`) is the reliable opt-in for
+# a BUILTIN process type: the rdb module replaces the flat `connections` key with its own role
+# list (tickerplanttypes + hdbtypes), so a flat `connections` entry would never reach servers.
+discoverywant = "ALL"              # be told about every proctype; or e.g. "rdb hdb" to narrow

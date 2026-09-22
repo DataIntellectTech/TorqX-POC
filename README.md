@@ -17,6 +17,8 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 6. A custom process: `feed.q`
 7. Config: TOML support (a new innovation)
 8. Versioning & dependency checks
+9. A chained tickerplant (`chainedtp1`)
+10. Service discovery (`discovery1`)
 
 ---
 
@@ -62,6 +64,31 @@ Everything else in `setenv.sh` is generic (no user/host paths). `TORQXDATAHOME` 
 `TORQXAPPHOME` (mirroring TorQ's `TORQAPPHOME`/`TORQDATAHOME`) so runtime data (hdb, tp-log, wdb
 working dir) can live on a separate volume in a real deployment; here they coincide.
 
+> **⚠️ For a demo or rehearsal, pin `TORQXHOME` to its own clone.** The sibling `kdbx-modules` is
+> a *working* checkout — whoever owns it switches branches and commits in it during normal
+> development, and each switch silently changes which module versions this app resolves. When the
+> resolved versions stop satisfying `deps.toml`, `di.torq.depcheck` fails and **every process falls
+> through to a bare q session**: no tables, no `[ERROR]` in the log (the failure is buffered and
+> never flushed while the process lives), and gateway queries that *hang* rather than fail. This
+> happened mid-session while preparing this runbook — the checkout moved to a branch without
+> `di.torq.proc.discovery` and the whole stack quietly stopped working.
+>
+> `setenv.sh` honours a pre-set `TORQXHOME`, so pin it:
+>
+> ```bash
+> git clone --branch feature-discovery --single-branch \
+>   ~/bin/kdbx-modules ~/bin/kdbx-modules-demo
+> export TORQXHOME=~/bin/kdbx-modules-demo      # before sourcing, and in any demo shell
+> source ./setenv.sh
+> ```
+>
+> Sanity-check what you actually resolved before demoing anything:
+> ```bash
+> cat $TORQXHOME/di/torq/VERSION $TORQXHOME/di/torq/servers/VERSION
+> #> 0.6.0    <- needs >= 0.6.0 for discovery auto-subscribe
+> #> 0.5.0    <- needs >= 0.5.0 for addprocs/removeprocs
+> ```
+
 **Source it (once, for interactive use) and start the stack:**
 
 ```bash
@@ -69,11 +96,13 @@ source ./setenv.sh
 torqx.sh start          # start every row in appconfig/process.csv
 torqx.sh status
 #> tickerplant1    tickerplant up    pid=...
+#> chainedtp1      chainedtp  up    pid=...   # chains from tickerplant1 (§9)
 #> hdb             hdb        up    pid=...
 #> feed1           feed       up    pid=...
 #> rdb1            rdb        up    pid=...
 #> wdb1            wdb        up    pid=...
 #> gateway1        gateway    up    pid=...
+#> discovery1      discovery  up    pid=...   # service discovery (§10)
 #> loader1         loader     down            # one-shot loader; exits after its run hook
 ```
 
@@ -99,7 +128,7 @@ in-memory) + hdb (history, on-disk) and joins:
 
 ```bash
 q -q <<'EOF'
-h:hopen`::5050;
+h:hopen`::5306;
 neg[h](`.gw.asyncexec;"select cnt:count i by sym from trade";`rdb`hdb);
 show h[];
 \\
@@ -144,8 +173,9 @@ finds everything where they expect it.
 | Settings format | `.q` (executable) | **`.toml`** (inert data) — `.q` still supported (§7) |
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
-| Tickerplant | segmented (STP) | classic TP (segmented is a later sprint) |
-| Not yet built | discovery, monitor, DQC/DQE, sort-worker, kill, tickerlogreplay | — (deferred per plan) |
+| Tickerplant | segmented (STP) | classic TP, **plus a chained TP** off it (§9). Segmented is built as `di.torq.proc.segmentedtp` but not wired here — `di.subscriptions` cannot yet replay its multi-logfile `subdetails` shape, so no current subscriber can sit behind one |
+| Service discovery | discovery process | **wired** — `di.torq.proc.discovery` (§10) |
+| Not yet built | monitor, DQC/DQE, sort-worker, kill, tickerlogreplay | — (deferred per plan) |
 
 The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (the FSP's example
 `countbysym`/`hloc`) is auto-loaded into the rdb at startup, at root, exactly as TorQ's
@@ -159,9 +189,9 @@ The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (
 redirected to `$TORQXLOGDIR` (default `/tmp`):
 
 ```bash
-ls /tmp/torqx_torqx-poc_*.log
-#> /tmp/torqx_torqx-poc_tickerplant1.log  ...  _rdb1.log  _gateway1.log
-tail -5 /tmp/torqx_torqx-poc_gateway1.log
+ls /tmp/torqx_${TORQXSTACKID}_*.log
+#> /tmp/torqx_torqx-poc-alowry_tickerplant1.log  ...  _rdb1.log  _gateway1.log
+tail -5 /tmp/torqx_${TORQXSTACKID}_gateway1.log
 ```
 
 **Log rolling (`di.torq.logroll`).** An opt-in module (a design delta from the plan, which folded
@@ -409,6 +439,158 @@ torqx.sh status rdb1
 
 (A missing module reports `... requires minimum version X, not found`; a missing `deps.toml`
 altogether is a silent no-op — the whole feature is opt-in.)
+
+---
+
+## 9. A chained tickerplant (`chainedtp1`)
+
+`di.torq.proc.chainedtp` subscribes to the origin tickerplant as an ordinary subscriber and
+**republishes** what it receives under the classic `.u.sub` / `.u.subdetails` surface. Because
+that surface is identical to `di.torq.proc.tickerplant`'s, a downstream subscriber cannot tell
+the two apart — `di.subscriptions` asks a chained TP for `.u.subdetails` exactly as it asks the
+origin. Moving a subscriber onto it is a one-word config change, not a code change.
+
+Wiring is a `process.csv` row plus `appconfig/settings/chainedtp1.toml`:
+
+```toml
+upstreamtype = "tickerplant"   # the PROCTYPE to chain from - di.torq.servers resolves by
+                               # proctype only, there is no name-based option
+tplogdir = "ctplog"            # the chain keeps its OWN log, separate from the origin's tplog/
+```
+
+Prove it is relaying — `rowcount` climbs, and it reports its own log file, not the origin's:
+
+```bash
+q -q <<'EOF'
+upd:{[t;d] };                                  # asking for subdetails also subscribes you
+h:hopen`::5301;
+d:h(`.u.subdetails;`;`);
+show `tables`rowcount`logfile#d;
+\\
+EOF
+#> tables  | `packets`quote`trade
+#> rowcount| 58
+#> logfile | `:/.../TorqX-POC/ctplog/chainedtp1_2026.09.22
+```
+
+To put a subscriber behind it instead of the origin, point its `tickerplanttypes` at the chained
+proctype — e.g. in `rdb1.toml`, `tickerplanttypes = "chainedtp"`. Nothing else changes.
+
+---
+
+## 10. Service discovery (`discovery1`)
+
+`di.torq.proc.discovery` reads the phone book(s), **dials every row itself**, and **pushes** the
+live rows into each subscriber's own `.torq.servers` registry. Subscribers never dial back and
+never self-register — there is deliberately no `register` entry point.
+
+**A consumer opts in with config alone.** The consumer half lives in `di.torq` (≥ 0.6.0), not in
+the discovery module, so it works for every process type at once. In `rdb1.toml`:
+
+```toml
+discoverywant = "ALL"          # or e.g. "rdb hdb" to narrow
+```
+
+Use `discoverywant` rather than listing `discovery` in `connections`: a built-in process type
+replaces the flat `connections` key with its own role list (the rdb's is `tickerplanttypes` +
+`hdbtypes`), so a `connections` entry would never reach `di.torq.servers`.
+
+**Two phone books.** Discovery always reads `process.csv`, and — with `tracknontorqprocess`
+(default on) — also `nontorqprocess.csv` beside it, in the same `host,port,proctype,procname`
+format. No consumer ever reads that second file, which is what makes it a genuine discovery
+demo rather than a restatement of config. Change detection is a **content diff on every tick**
+(`retryperiod`, set to 5s here) — there is no mtime or inotify watch.
+
+**The demo.** With the stack up, start something nothing has been told about, then add it to the
+second phone book:
+
+```bash
+q -p 5310 -q &                                             # a bare, non-TorqX process
+echo 'localhost,5310,analytics,analytics1' >> appconfig/nontorqprocess.csv
+```
+
+Within a tick it appears in the rdb's registry — a process the rdb was never configured to know
+(its config names only `tickerplant` and `hdb`):
+
+```bash
+q -q <<'EOF'
+upd:{[t;d] };
+h:hopen`::5304;
+show h"select procname,proctype,hpup from .m.di.0torq.0servers.SERVERS";
+\\
+EOF
+#> analytics1   analytics   :localhost:5310      <- pushed, never declared to the rdb
+```
+
+Now delete that line from `nontorqprocess.csv`, **leaving the process running**. Within a tick it
+is evicted everywhere. Eviction is keyed on the phone book, not on liveness — a listed process
+that is merely *down* is retained and retried, an *unlisted* process is decommissioned:
+
+```
+[servers]   removeprocs: 1 row(s) removed: analytics1/analytics@:localhost:5310
+[discovery] evicted 1 row(s) no longer in any phone book: analytics1/analytics@:localhost:5310
+[discovery] pushed 7 row(s) across 1 subscriber(s); 7 live service(s) known
+```
+
+> **Known limitation — the gateway does not route to a discovered backend** until its own EOD
+> reload or a restart. `di.torq.proc.gateway` registers its backends into `di.serverselect` only
+> in `registerbackends[]`, which runs at init and at reload-end — not on every registry change.
+> So a backend that connects after gateway init (a discovered one, or just an rdb restarted
+> mid-session) sits live in the gateway's registry but absent from its routing table. This
+> predates discovery and is not caused by it. Force a rebuild with:
+>
+> ```q
+> h:hopen`::5306; h(`.gw.reload;`reloadend)      / re-runs registerbackends[]; safe on a live gateway
+> ```
+>
+> **The sharper edge, measured: restarting a backend makes the gateway HANG, not just miss it.**
+> After `torqx.sh restart rdb1` the gateway's routing table still holds the dead handle, and
+> `.gw.asyncexec` passes a `0Wn` timeout — so a client query against `` `rdb `` blocks
+> indefinitely rather than erroring. A `.gw.reload[`reloadend]` clears it immediately. Treat
+> "restart any backend → reload the gateway" as a standing rule, and be aware of it before
+> restarting anything mid-demo.
+
+### Failover onto a discovered backend
+
+Measured, and worth knowing before demoing it: **`di.serverselect` picks one server per
+proctype — it does not fan out across duplicates.** A second rdb therefore does *not* double a
+`count` and does *not* add a third row to a scatter-gather result; six consecutive queries all
+went to the same rdb. The payoff of a discovered second backend is **redundancy**, and the way
+to show it is failover:
+
+```bash
+# 1. start an rdb that is in NO phone book and no process.csv row
+env -u QHOME QINIT="$TORQXHOME/di/torq/bin/torqx_init.q" \
+  q -torqxstackid "$TORQXSTACKID" -proctype rdb -procname rdb2 -p 5308 &
+
+# 2. tell only discovery about it
+echo 'localhost,5308,rdb,rdb2' >> appconfig/nontorqprocess.csv     # wait one tick (5s)
+
+# 3. it reaches the gateway's REGISTRY but not yet its routing table
+#>   registry: rdb1 connected=1, rdb2 connected=1
+#>   gateway log: "registered 2 backend server(s)"
+
+# 4. rebuild the routing table
+q -q <<'EOF'
+h:hopen`::5306; h(`.gw.reload;`reloadend); \\
+EOF
+#>   gateway log: "registered 3 backend server(s)"
+
+# 5. kill the primary - queries keep working, answered by the discovered rdb
+torqx.sh stop rdb1
+q -q <<'EOF'
+h:hopen`::5306;
+neg[h](`.gw.asyncexec;"([]pid:enlist .z.i; n:enlist count trade)";enlist`rdb);
+show h[];
+\\
+EOF
+#> pid     n
+#> ------------
+#> 3798829 8503        <- rdb2's pid: a process the gateway was never configured to know
+```
+
+The gateway requires `discoverywant` in its own settings to receive the push at all (it is set in
+`gateway1.toml`); opting in the rdb alone is not enough.
 
 ---
 

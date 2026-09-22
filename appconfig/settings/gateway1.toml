@@ -1,9 +1,21 @@
 # gateway1 settings. The query front end: connects to the rdb + hdb, and routes a client query
 # across them, joining the results. A client does:
-#   h:hopen`::5050; neg[h](`.gw.asyncexec;"select from trade";`rdb`hdb); h[]
+#   h:hopen`::5306; neg[h](`.gw.asyncexec;"select from trade";`rdb`hdb); h[]
 # and gets the rdb's in-memory (today) trades razed with the hdb's on-disk (historical) trades.
 # Also gates queries during the wdb's EOD reload. See kdbx-modules/di/torq/proc/gateway.
 
 backendtypes = "rdb hdb"   # proctype(s) to connect to and route queries across
 # synccallsallowed omitted -> false (deferred-sync / async only)
 # errorprefix omitted -> "error: "
+
+# --- service discovery (consumer) -------------------------------------------------------
+# Lets discovery1 push newly-seen processes into this gateway's .torq.servers registry.
+#
+# IMPORTANT: landing in the registry is NOT the same as being routed to. The gateway builds its
+# di.serverselect routing table in registerbackends[], which runs only at init and at EOD
+# reload-end - not on every registry change. So a backend discovered mid-session sits in the
+# registry, connected, but absent from routing until one of those happens. Force it with:
+#   h:hopen`::5306; h(`.gw.reload;`reloadend)
+# See README section 10 for the full explanation - this is a gateway limitation that predates
+# discovery, not something discovery causes.
+discoverywant = "rdb hdb"          # only the proctypes this gateway could ever route to

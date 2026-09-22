@@ -10,11 +10,22 @@
 dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # TORQXHOME = the FRAMEWORK checkout (its di/torq/bin launcher + di/ modules), NOT this app.
-# This is now kdbx-modules (branch feature-torqx), the RFC-0001 consolidation base - the whole
-# framework resolves from there and the legacy TorqX checkout is no longer used at all.
-# Default assumes kdbx-modules is a sibling of this project; if it lives elsewhere, set this to
-# that absolute path.
-export TORQXHOME="$dirpath/../kdbx-modules"
+# This is now kdbx-modules, the RFC-0001 consolidation base - the whole framework resolves from
+# there and the legacy TorqX checkout is no longer used at all.
+#
+# Honours a TORQXHOME already set in the environment, and only falls back to the sibling layout.
+# That matters because the sibling checkout is a WORKING clone: whoever owns it switches branches
+# and commits in it during normal development, and every such switch silently changes which module
+# versions this app resolves. deps.toml then fails depcheck and EVERY process falls through to a
+# bare q session - no tables, no error in the log, queries that hang rather than fail. That has
+# already happened here mid-session.
+#
+# So for anything that must keep working across someone else's branch switches - a demo, a
+# rehearsal, CI - point this at a clone pinned to a known commit:
+#
+#   git clone --branch <branch> --single-branch <path-or-url> ~/bin/kdbx-modules-demo
+#   export TORQXHOME=~/bin/kdbx-modules-demo && source ./setenv.sh
+export TORQXHOME="${TORQXHOME:-$dirpath/../kdbx-modules}"
 export TORQXAPPCONFIG="$dirpath/appconfig"
 # TORQXAPPHOME = the app's CODE/CONFIG root (database.q schema, code/, appconfig/, deps.toml).
 # TORQXDATAHOME = where RUNTIME DATA is written/read (hdb, tplog, wdb working dir). Splitting
@@ -41,7 +52,9 @@ case ":$PATH:" in
   *) export PATH="$TORQXHOME/di/torq/bin:$PATH" ;;
 esac
 
-if [ -z "$QCMD" ]; then
+# ${QCMD:-} not $QCMD - a caller running under `set -u` (any careful script that sources this)
+# aborts with "QCMD: unbound variable" on the bare form
+if [ -z "${QCMD:-}" ]; then
   QCMD="q"
 fi
 export QCMD

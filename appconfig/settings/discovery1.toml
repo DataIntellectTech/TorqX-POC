@@ -1,0 +1,22 @@
+# discovery1 settings. The service-discovery process. It reads the phone book(s), DIALS every
+# row itself, and PUSHES the live rows into each subscriber's own root .torq.servers.addprocs
+# (removals via .torq.servers.removeprocs). Subscribers never dial back and never self-register
+# - a consumer opts in with config alone (see `discoverywant` in rdb1.toml).
+#
+# The consumer half lives in di.torq >= 0.6.0, NOT in this module; di.torq dials discovery for
+# each opted-in process and re-subscribes every 10s (fixed, no knob), so a reconnect self-heals.
+# See kdbx-modules/di/torq/proc/discovery.
+
+retryperiod = 5              # seconds between ticks. A tick = re-read every phone book, dial
+                             # anything new, evict anything no longer listed, push to subscribers.
+                             # Change detection is a CONTENT DIFF on each tick - there is no mtime
+                             # or inotify watch - so this period is the demo's response time.
+                             # Default is 30, dropped to 5 here so a live edit lands promptly.
+tracknontorqprocess = true   # also read the SECOND phone book, nontorqprocess.csv (same
+                             # host,port,proctype,procname format, resolved beside process.csv).
+                             # This is the file the demo edits live: no consumer ever reads it,
+                             # so anything appearing there is genuinely discovered, not declared.
+# nontorqprocessfile omitted -> nontorqprocess.csv beside process.csv
+# hopentimeout omitted -> 200ms, from the framework's builtin discovery settings tier
+#   (kdbx-modules/di/torq/settings/discovery.q). Discovery dials many possibly-down hosts every
+#   tick, so it runs a much tighter dial timeout than the 2000ms di.torq.servers default.

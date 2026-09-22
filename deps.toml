@@ -3,22 +3,33 @@
 # kdbx-modules/di/torq/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
-"di.torq" = "0.4.0"
+# di.torq 0.6.0 carries the generic discovery auto-subscribe (the CONSUMER half of service
+# discovery - see torq.md "Discovery auto-subscribe"). A process opts in with config alone;
+# without 0.6.0 the discoverywant keys below are inert and discovery is write-only.
+"di.torq" = "0.6.0"
 "di.torq.config" = "0.1.0"
 "di.util.log" = "0.1.0"
 "di.torq.proc.hdb" = "0.1.0"
-"di.torq.servers" = "0.3.0"
+# 0.5.0 adds removeprocs (root-published AND injected) plus the per-instance hopentimeout key.
+# di.torq.proc.discovery's own manifest requires exactly this - it pushes rows into every peer's
+# root .torq.servers.addprocs/removeprocs, so a peer below 0.5.0 silently ignores the push.
+"di.torq.servers" = "0.5.0"
 "di.torq.handlers" = "0.1.0"
-"di.torq.proc.tickerplant" = "0.1.0"
+"di.torq.proc.tickerplant" = "0.1.1"
 # the tp-log lifecycle module. Renamed di.tplog -> di.tplogmgr during the kdbx-modules
 # consolidation, to resolve the collision with kdbx's own di.tplog (log check/repair).
 "di.tplogmgr" = "0.1.0"
-"di.torq.proc.rdb" = "0.3.0"
-"di.torq.proc.wdb" = "0.2.0"
+"di.torq.proc.rdb" = "0.3.1"
+"di.torq.proc.wdb" = "0.2.1"
 "di.torq.proc.gateway" = "0.2.0"
+# chainedtp relays from an upstream tickerplant over di.subscriptions, republishing the classic
+# .u.sub/.u.subdetails surface - so an ordinary subscriber cannot tell it from the origin TP.
+"di.torq.proc.chainedtp" = "0.1.0"
+# the discovery SERVICE process type. The consumer half lives in di.torq (see above), not here.
+"di.torq.proc.discovery" = "0.1.0"
 "di.asyncdispatch" = "0.1.0"
 "di.serverselect" = "0.1.0"
-"di.dataaccess" = "0.2.0"
+"di.dataaccess" = "0.3.0"
 "di.subscriptions" = "0.1.0"
 "di.dbwrite" = "0.1.0"
 "di.pubsub" = "0.1.0"

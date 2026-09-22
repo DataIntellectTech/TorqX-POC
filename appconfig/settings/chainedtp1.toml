@@ -1,0 +1,18 @@
+# chainedtp1 settings. A chained tickerplant: it subscribes to the origin tickerplant
+# (tickerplant1) as an ordinary subscriber, then REPUBLISHES what it receives under the
+# classic .u.sub / .u.subdetails surface. Downstream subscribers cannot tell it apart from
+# the origin TP - di.subscriptions asks it for `.u.subdetails exactly as it asks tickerplant1 -
+# so a subscriber is moved onto it purely by pointing tickerplanttypes at `chainedtp`.
+# See kdbx-modules/di/torq/proc/chainedtp.
+
+upstreamtype = "tickerplant"       # the PROCTYPE of the TP to chain from, not a procname:
+                                   # di.torq.servers resolves connections by proctype only
+tplogdir = "ctplog"                # this chained TP keeps its OWN log, separate from the
+                                   # origin's tplog/ (relative to TORQXAPPHOME)
+publishmode = "immediate"          # or "batched" (buffer per table, flush every pubperiod seconds)
+replay = true                      # replay the upstream's log on subscription, so a restart
+                                   # mid-session rebuilds this chain's own log from the origin
+clearlogonsubscription = true      # start each session from a clean chained log - keeps the
+                                   # demo repeatable rather than accumulating across restarts
+# subscribeto / subscribesyms omitted -> all tables, all syms
+# connecttimeoutms / connectpollms omitted -> 10000 / 500 (wait for tickerplant1 at startup)
