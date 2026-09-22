@@ -6,7 +6,9 @@
 # di.torq 0.6.0 carries the generic discovery auto-subscribe (the CONSUMER half of service
 # discovery - see torq.md "Discovery auto-subscribe"). A process opts in with config alone;
 # without 0.6.0 the discoverywant keys below are inert and discovery is write-only.
-"di.torq" = "0.6.0"
+# 0.7.0 adds the [clienttracking] hook - without it the section in gateway1.toml is ignored
+# entirely and client tracking silently never wires.
+"di.torq" = "0.7.0"
 "di.torq.config" = "0.1.0"
 "di.util.log" = "0.1.0"
 "di.torq.proc.hdb" = "0.1.0"
@@ -33,3 +35,5 @@
 "di.subscriptions" = "0.1.0"
 "di.dbwrite" = "0.1.0"
 "di.pubsub" = "0.1.0"
+# client session tracking, wired by di.torq from a [clienttracking] section (see gateway1.toml)
+"di.clienttracking" = "0.1.0"

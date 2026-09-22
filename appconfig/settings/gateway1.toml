@@ -19,3 +19,15 @@ backendtypes = "rdb hdb"   # proctype(s) to connect to and route queries across
 # See README section 10 for the full explanation - this is a gateway limitation that predates
 # discovery, not something discovery causes.
 discoverywant = "rdb hdb"          # only the proctypes this gateway could ever route to
+
+# --- client session tracking ---------------------------------------------------------------
+# Wired generically by di.torq >= 0.7.0 from this section's presence (same opt-in convention as
+# [logroll] and [querylog]); absent section = silent no-op. The gateway is the natural host: it is
+# the client-facing process, so these are real end-user sessions.
+#
+# NB: `maxidle` and `trackusage` are accepted but INERT on a stock TorqX stack - they need an owner
+# on the .z.pg/.z.ps exec phase, and neither the gateway nor di.torq claims one today. Session
+# tracking (open/close, IP, user) works regardless, and is what this demonstrates.
+[clienttracking]
+enabled = true
+retain = "0D02:00:00"

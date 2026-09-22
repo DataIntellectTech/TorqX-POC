@@ -19,6 +19,7 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 8. Versioning & dependency checks
 9. A chained tickerplant (`chainedtp1`)
 10. Service discovery (`discovery1`)
+11. Client session tracking (`gateway1`)
 
 ---
 
@@ -85,7 +86,7 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 > Sanity-check what you actually resolved before demoing anything:
 > ```bash
 > cat $TORQXHOME/di/torq/VERSION $TORQXHOME/di/torq/servers/VERSION
-> #> 0.6.0    <- needs >= 0.6.0 for discovery auto-subscribe
+> #> 0.7.0    <- needs >= 0.6.0 for discovery auto-subscribe, >= 0.7.0 for [clienttracking]
 > #> 0.5.0    <- needs >= 0.5.0 for addprocs/removeprocs
 > ```
 
@@ -591,6 +592,59 @@ EOF
 
 The gateway requires `discoverywant` in its own settings to receive the push at all (it is set in
 `gateway1.toml`); opting in the rdb alone is not enough.
+
+---
+
+## 11. Client session tracking (`gateway1`)
+
+`di.clienttracking` is not a process type — it is an opt-in capability wired into an existing
+process, exactly like `di.torq.logroll`. It is switched on by the presence of a
+`[clienttracking]` section, and `di.torq` (>= 0.7.0) does the wiring generically; no app code.
+
+```toml
+# appconfig/settings/gateway1.toml
+[clienttracking]
+enabled = true
+retain = "0D02:00:00"
+```
+
+The gateway is the natural host — it is the client-facing process, so these are real end-user
+sessions. Every connection the README's own demo query makes shows up here:
+
+```bash
+q -q <<'EOF'
+upd:{[t;d] };
+h:hopen`::5306;
+show h"(.m.di.0clienttracking.getclients)[]";
+\
+EOF
+#> w  ipa       u      a          startp                          endp
+#> -----------------------------------------------------------------------------------------
+#> 9  127.0.0.1 alowry 2130706433 2026.09.22D21:14:25.454793396
+#> 12 127.0.0.1 alowry 2130706433 2026.09.22D21:14:29.859076301   2026.09.22D21:14:33.100...
+```
+
+`w` is the handle, `ipa`/`u` the client's IP and user, and `endp` is populated once the session
+closes — so the table shows live *and* recently-closed sessions (`retain` controls how long a
+closed one is kept).
+
+**The opt-in really is opt-in**, which is worth showing directly — the module is not even loaded
+on a process without the section:
+
+```bash
+q -q <<'EOF'
+upd:{[t;d] };
+r:hopen`::5304; show r"`0clienttracking in key `.m.di"; hclose r;   / rdb1  -> 0b
+g:hopen`::5306; show g"`0clienttracking in key `.m.di"; hclose g;   / gateway1 -> 1b
+\
+EOF
+```
+
+> **What is inert, and why.** `maxidle` and `trackusage` are accepted but do nothing on a stock
+> TorqX stack: both need something to own the `exec` phase on `.z.pg`/`.z.ps`, and neither
+> `di.torq.proc.gateway` nor `di.torq` claims one today. Session tracking — open/close, IP, user —
+> works regardless and is what this demonstrates. That is a gap in the stack (it waits on a
+> `di.permissions`-style owner), not in `di.clienttracking`.
 
 ---
 
