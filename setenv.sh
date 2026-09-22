@@ -22,7 +22,13 @@ export TORQXAPPCONFIG="$dirpath/appconfig"
 # sample app they point at the same place. TorQ makes the same TORQAPPHOME/TORQDATAHOME split.
 export TORQXAPPHOME="$dirpath"
 export TORQXDATAHOME="$dirpath"
-export TORQXSTACKID="torqx-poc"
+# TORQXSTACKID namespaces one running stack from another. torqx.sh keys BOTH its pidfile/liveness
+# check and its log paths (/tmp/torqx_<stackid>_<procname>.log) on it, so two people running this
+# repo on the same host under the same id collide badly: each one's `torqx.sh status` reports the
+# OTHER's processes as its own, `torqx.sh stop` would kill them, and the second to start cannot
+# write its logs ("Permission denied" on a file the first user owns). Suffixing the user keeps
+# each stack independent on a shared box while staying a single committed default.
+export TORQXSTACKID="torqx-poc-${USER}"
 # QPATH resolves di.* modules (colon-separated, first match wins). Everything the app needs is in
 # TORQXHOME; $HOME/.kx/mod supplies the KX-shipped modules (kx.log).
 export QPATH="$TORQXHOME:$HOME/.kx/mod"

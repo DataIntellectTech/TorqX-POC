@@ -77,6 +77,14 @@ torqx.sh status
 #> loader1         loader     down            # one-shot loader; exits after its run hook
 ```
 
+> **Shared hosts: `TORQXSTACKID` must be unique per user.** `torqx.sh` keys both its liveness
+> check and its log paths (`/tmp/torqx_<stackid>_<procname>.log`) on it, so two people running
+> this repo under the same id see each other's processes as their own — `torqx.sh status` lists
+> them, `torqx.sh stop` would kill them, and the second to start cannot write its logs. This has
+> already happened on `homer`. `setenv.sh` therefore defaults to `torqx-poc-${USER}`. Ports are a
+> separate matter: `process.csv` ports are absolute, so a second stack on one host needs its own
+> port block too.
+
 `torqx.sh` is deliberately thin: it reads `process.csv` only to enumerate rows and look up a
 port; it never resolves *identity* (that's di.torq's job — §4). Start/stop one or all:
 
