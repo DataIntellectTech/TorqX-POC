@@ -54,13 +54,15 @@ hclose h; exit 0;
 EOF
 }
 
-# rdb1 is only useful once it has REPLAYED - the port binds, and the gateway reconnects, well
-# before the trade table exists. Querying in that window returns 'trade, not a hang.
+# An rdb is only useful once it has REPLAYED - the port binds, and the gateway reconnects, well
+# before the trade table exists. Querying in that window returns 'trade, not a hang. Takes the
+# port, because BOTH rdbs need this: rdb2 replays the whole day's tp log at step 1, and step 6
+# queries whichever rdb is now serving.
 waitrdbready(){
-  local i r
-  for i in $(seq 1 40); do
+  local i r port=$1
+  for i in $(seq 1 60); do
     r=$(timeout 10 q -q 2>/dev/null <<EOF
-h:hopen\`::$RDB1_PORT; -1 string h"count trade"; hclose h; exit 0;
+h:hopen\`::$port; -1 string h"count trade"; hclose h; exit 0;
 EOF
 )
     [ -n "${r:-}" ] && return 0
@@ -94,15 +96,31 @@ EOF
   [ $? -eq 124 ] && echo "   QUERY TIMED OUT - run ./demo/gw-reload.sh"
 }
 
-stoprdb2(){ local p; p=$(pgrep -u "$USER" -f 'procname rdb2'); [ -n "$p" ] && kill $p 2>/dev/null; return 0; }
+# Match this stack's id as well as the procname - a bare 'procname rdb2' pattern would also kill
+# an rdb2 belonging to another TORQXSTACKID owned by the same user.
+stoprdb2(){
+  local p
+  p=$(pgrep -u "$USER" -f "torqxstackid $TORQXSTACKID .*procname rdb2")
+  [ -n "$p" ] && kill $p 2>/dev/null
+  return 0
+}
+
+PHONEBOOKBAK="/tmp/torqx_${TORQXSTACKID}_phonebook.bak"
 
 if [ "${1:-}" = "--cleanup" ]; then
   say "Cleanup"
-  printf 'host,port,proctype,procname\n' > "$PHONEBOOK"
+  # restore whatever was in the phone book before the demo ran, rather than truncating it to a
+  # header - it is a TRACKED file and may legitimately carry real non-TorQ rows
+  if [ -f "$PHONEBOOKBAK" ]; then
+    cp "$PHONEBOOKBAK" "$PHONEBOOK" && rm -f "$PHONEBOOKBAK"
+    echo "   phone book restored to its pre-demo contents"
+  else
+    echo "   no pre-demo phone book backup found - leaving $PHONEBOOK as is"
+  fi
   stoprdb2
   torqx.sh start rdb1 >/dev/null 2>&1
   waitport $RDB1_PORT                         || echo "   WARNING: rdb1 did not rebind $RDB1_PORT"
-  waitrdbready                                || echo "   WARNING: rdb1 never finished replaying"
+  waitrdbready $RDB1_PORT                     || echo "   WARNING: rdb1 never finished replaying"
   waitgw "procname=\`rdb1, not null w"        || echo "   WARNING: gateway never reconnected to rdb1"
   gwreload
   echo "   verifying the gateway answers:"
@@ -112,9 +130,22 @@ if [ "${1:-}" = "--cleanup" ]; then
 fi
 
 say "1. Start an rdb that is in no phone book and no process.csv row"
-env -u QHOME QINIT="$TORQXHOME/di/torq/bin/torqx_init.q" nohup \
-  q -torqxstackid "$TORQXSTACKID" -proctype rdb -procname rdb2 -p $RDB2_PORT \
+# Refuse to start if something is ALREADY on the port. Without this, waitport below succeeds
+# instantly against the foreign listener and every later step reports success while actually
+# talking to someone else's process - this host routinely has 1000+ q processes on it.
+if listening $RDB2_PORT; then
+  echo "   port $RDB2_PORT is already in use - refusing to start rdb2."
+  echo "   Either stop whatever holds it, or edit RDB2_PORT at the top of this script."
+  exit 1
+fi
+# Launch exactly as torqx.sh does (QHOME inherited, not stripped). Verified: a nohup launch with
+# QHOME set still resolves KDB-X 5 and loads di.torq. Stripping it here would put rdb2 in a
+# DIFFERENT runtime environment from every other process in the stack, which is the last thing a
+# failover demo should do.
+QINIT="$TORQXHOME/di/torq/bin/torqx_init.q" nohup \
+  $QCMD -torqxstackid "$TORQXSTACKID" -proctype rdb -procname rdb2 -p $RDB2_PORT \
   </dev/null >/tmp/torqx_${TORQXSTACKID}_rdb2.log 2>&1 &
+disown
 if waitport $RDB2_PORT; then
   echo "   rdb2 up on $RDB2_PORT (nothing has been told about it)"
 else
@@ -122,6 +153,7 @@ else
 fi
 
 say "2. Tell ONLY discovery about it (the gateway never reads this file)"
+cp "$PHONEBOOK" "$PHONEBOOKBAK"          # so --cleanup can restore, not truncate
 echo "localhost,$RDB2_PORT,rdb,rdb2" >> "$PHONEBOOK"
 echo "   appended to $PHONEBOOK"
 
@@ -135,7 +167,10 @@ hclose h; exit 0;
 EOF
 echo "   connected - but still absent from the ROUTING table (log: 'registered 2 backend server(s)')"
 
-say "4. Rebuild the routing table so rdb2 becomes selectable"
+say "4. Wait for rdb2 to finish replaying, then rebuild the routing table"
+# Connected != ready. rdb2 replays the whole day's tp log before `trade` exists; failing over to
+# it mid-replay returns 'trade rather than a row.
+waitrdbready $RDB2_PORT || echo "   WARNING: rdb2 never finished replaying - step 6 may error"
 gwreload
 
 say "5. Kill the primary, wait for the gateway to notice, then reload"
