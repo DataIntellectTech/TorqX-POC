@@ -21,6 +21,13 @@ backendtypes = "rdb hdb"   # proctype(s) to connect to and route queries across
 discoverywant = "rdb hdb"          # only the proctypes this gateway could ever route to
 
 # --- client session tracking ---------------------------------------------------------------
+# ⚠️ INERT ON di.torq 0.6.0 (what deps.toml currently pins, and what is on main). The hook that
+# reads this section - initclienttracking - landed in di.torq 0.7.0, which is NOT merged yet.
+# Until it is, NOTHING reads the keys below: no module loads, no handlers register, and there is
+# no warning either, because a process that does not know about a settings section cannot tell
+# you it ignored one. The section is kept here so the wiring is ready the moment 0.7.0 lands;
+# raise the di.torq pin in deps.toml in that same commit.
+#
 # Wired generically by di.torq >= 0.7.0 from this section's presence (same opt-in convention as
 # [logroll] and [querylog]); absent section = silent no-op. The gateway is the natural host: it is
 # the client-facing process, so these are real end-user sessions.

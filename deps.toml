@@ -6,9 +6,13 @@
 # di.torq 0.6.0 carries the generic discovery auto-subscribe (the CONSUMER half of service
 # discovery - see torq.md "Discovery auto-subscribe"). A process opts in with config alone;
 # without 0.6.0 the discoverywant keys below are inert and discovery is write-only.
-# 0.7.0 adds the [clienttracking] hook - without it the section in gateway1.toml is ignored
-# entirely and client tracking silently never wires.
-"di.torq" = "0.7.0"
+# Pinned at 0.6.0 deliberately, NOT 0.7.0. 0.6.0 is what is on main and is everything the two
+# wired process types need. The [clienttracking] section in gateway1.toml needs 0.7.0 (the
+# initclienttracking hook), which is not merged yet - so on 0.6.0 that section is read by nobody
+# and client tracking is SILENTLY INERT. That is a deliberate trade: pinning 0.7.0 would instead
+# fail depcheck and stop every process in the stack from starting at all. Raise this to 0.7.0 in
+# the same commit that the hook lands, and README section 11 becomes live at that point.
+"di.torq" = "0.6.0"
 "di.torq.config" = "0.1.0"
 "di.util.log" = "0.1.0"
 "di.torq.proc.hdb" = "0.1.0"

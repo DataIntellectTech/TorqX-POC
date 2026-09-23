@@ -19,7 +19,7 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 8. Versioning & dependency checks
 9. A chained tickerplant (`chainedtp1`)
 10. Service discovery (`discovery1`)
-11. Client session tracking (`gateway1`)
+11. Client session tracking (`gateway1`) — ⚠️ needs di.torq 0.7.0, not yet on main
 
 ---
 
@@ -72,12 +72,13 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 > through to a bare q session**: no tables, no `[ERROR]` in the log (the failure is buffered and
 > never flushed while the process lives), and gateway queries that *hang* rather than fail. This
 > happened mid-session while preparing this runbook — the checkout moved to a branch without
-> `di.torq.proc.discovery` and the whole stack quietly stopped working.
+> `di.torq.proc.discovery` and the whole stack quietly stopped working. Everything this app needs
+> is on `main` as of `1309e9e`, so pin to `main` unless you are testing an unmerged branch.
 >
 > `setenv.sh` honours a pre-set `TORQXHOME`, so pin it:
 >
 > ```bash
-> git clone --branch feature-discovery --single-branch \
+> git clone --branch main --single-branch \
 >   ~/bin/kdbx-modules ~/bin/kdbx-modules-demo
 > export TORQXHOME=~/bin/kdbx-modules-demo      # before sourcing, and in any demo shell
 > source ./setenv.sh
@@ -86,7 +87,7 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 > Sanity-check what you actually resolved before demoing anything:
 > ```bash
 > cat $TORQXHOME/di/torq/VERSION $TORQXHOME/di/torq/servers/VERSION
-> #> 0.7.0    <- needs >= 0.6.0 for discovery auto-subscribe, >= 0.7.0 for [clienttracking]
+> #> 0.6.0    <- needs >= 0.6.0 for discovery auto-subscribe (>= 0.7.0 for section 11)
 > #> 0.5.0    <- needs >= 0.5.0 for addprocs/removeprocs
 > ```
 
@@ -114,6 +115,16 @@ torqx.sh status
 > already happened on `homer`. `setenv.sh` therefore defaults to `torqx-poc-${USER}`. Ports are a
 > separate matter: `process.csv` ports are absolute, so a second stack on one host needs its own
 > port block too.
+
+> **Debugging interactively? `unset QHOME` first.** A bare `q` in a shell that has the usual
+> profile `QHOME` (e.g. an Insights install) runs **kdb+ 4.1, which has no `use` keyword** — the
+> same binary reports `.z.K 4.1` with it set and `.z.K 5` without. Every `use\`di.*` then throws
+> `'use` and it looks like the module system is broken. Processes launched by `torqx.sh` are
+> unaffected (verified), so this only bites ad-hoc sessions:
+>
+> ```bash
+> env -u QHOME q -q     # or: unset QHOME
+> ```
 
 `torqx.sh` is deliberately thin: it reads `process.csv` only to enumerate rows and look up a
 port; it never resolves *identity* (that's di.torq's job — §4). Start/stop one or all:
@@ -595,7 +606,25 @@ The gateway requires `discoverywant` in its own settings to receive the push at 
 
 ---
 
-## 11. Client session tracking (`gateway1`)
+## 11. Client session tracking (`gateway1`) — ⚠️ needs di.torq 0.7.0, not yet on main
+
+> ### ⚠️ NOT LIVE YET — needs `di.torq` 0.7.0, which is not on main
+>
+> The `[clienttracking]` section is already written into `gateway1.toml`, but the hook that reads
+> it (`initclienttracking`) landed in **`di.torq` 0.7.0**, and `deps.toml` pins **0.6.0** — what
+> is actually on main today.
+>
+> On 0.6.0 this section is read by nobody. No module loads, no handlers register, and **there is
+> no warning**: a process that does not know a settings section exists cannot tell you it ignored
+> one. Do not demo this yet, and do not spend time debugging why `getclients[]` is missing — it is
+> missing because nothing wired it.
+>
+> **To turn it on**, in one commit: land the `initclienttracking` hook on `di.torq` (raising it to
+> 0.7.0), then raise the `di.torq` pin in `deps.toml` to `"0.7.0"`. Everything below then works as
+> written — it has been verified end to end against `main` + that hook.
+>
+> Pinning 0.7.0 *before* the hook lands is the wrong fix: depcheck runs first and fails, so every
+> process in the stack falls through to a bare q session with no tables and no error in the log.
 
 `di.clienttracking` is not a process type — it is an opt-in capability wired into an existing
 process, exactly like `di.torq.logroll`. It is switched on by the presence of a
