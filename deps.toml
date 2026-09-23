@@ -33,6 +33,8 @@
 "di.torq.proc.chainedtp" = "0.1.0"
 # the discovery SERVICE process type. The consumer half lives in di.torq (see above), not here.
 "di.torq.proc.discovery" = "0.1.0"
+"di.torq.proc.idb" = "0.1.0"
+"di.torq.proc.housekeeping" = "0.1.0"
 "di.asyncdispatch" = "0.1.0"
 "di.serverselect" = "0.1.0"
 "di.dataaccess" = "0.3.0"

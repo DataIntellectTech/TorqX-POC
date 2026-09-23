@@ -1,0 +1,5 @@
+action,path,match,exclude,age,unit,dirs
+rm,{TORQXAPPHOME}/logs/,err_*.log,,10,d,0
+rm,{TORQXAPPHOME}/logs/,out_*.log,,10,d,0
+gzip,{TORQXAPPHOME}/tplog/,tp*,*.gz,1,d,0
+gzip,{TORQXAPPHOME}/ctplog/,chainedtp1_*,*.gz,1,d,0

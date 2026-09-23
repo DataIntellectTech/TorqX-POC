@@ -8,3 +8,5 @@ localhost,5304,rdb,rdb1
 localhost,5305,wdb,wdb1
 localhost,5306,gateway,gateway1
 localhost,5307,discovery,discovery1
+localhost,5309,idb,idb1
+localhost,5310,housekeeping,housekeeping1
