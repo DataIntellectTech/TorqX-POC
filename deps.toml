@@ -22,3 +22,5 @@
 "di.subscriptions" = "0.1.0"
 "di.dbwrite" = "0.1.0"
 "di.pubsub" = "0.1.0"
+"di.torq.proc.idb" = "0.1.0"
+"di.torq.proc.housekeeping" = "0.1.0"
