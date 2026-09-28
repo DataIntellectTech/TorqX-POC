@@ -10,7 +10,7 @@
 dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # TORQXHOME = the FRAMEWORK checkout (its di/torq/bin launcher + di/ modules), NOT this app.
-# This is now kdbx-modules (branch feature-torqx), the RFC-0001 consolidation base - the whole
+# This is now kdbx-modules (branch feature-rediscovery), the RFC-0001 consolidation base - the whole
 # framework resolves from there and the legacy TorqX checkout is no longer used at all.
 # Default assumes kdbx-modules is a sibling of this project; if it lives elsewhere, set this to
 # that absolute path.

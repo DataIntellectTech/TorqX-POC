@@ -24,7 +24,7 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 ## 0. Prerequisites & layout
 
 TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses,
-branch `feature-torqx`) is already installed on the machine; we clone only the app.
+branch `feature-rediscovery`, 0660955+) is already installed on the machine; we clone only the app.
 
 ```
 <parent>/
