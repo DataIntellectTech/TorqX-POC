@@ -1,3 +1,4 @@
+tickerplanttypes = "chainedtp"
 numrows = 500
 settimer = 5
 reloadorder = "hdb rdb idb"

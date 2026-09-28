@@ -18,6 +18,7 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 7. Config: TOML support (a new innovation)
 8. Versioning & dependency checks
 9. Discovery (`discovery1`)
+10. Chained tickerplant (`chainedtp1`)
 
 ---
 
@@ -71,11 +72,13 @@ waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1;500);0]" >/dev/null 2>&1; do sle
 
 torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
 torqx.sh start tickerplant1
+torqx.sh start chainedtp1; waitq 5301      # rdb1/wdb1 subscribe to the chained tickerplant (§10)
 for p in hdb loader1 feed1 rdb1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
 waitq 5304; torqx.sh start gateway1        # gateway last, once rdb1 answers - it registers its backends at startup
 torqx.sh status
 #> discovery1      discovery  up    pid=...
 #> tickerplant1    tickerplant up    pid=...
+#> chainedtp1      chainedtp  up    pid=...
 #> hdb             hdb        up    pid=...
 #> feed1           feed       up    pid=...
 #> rdb1            rdb        up    pid=...
@@ -88,7 +91,7 @@ torqx.sh status
 aborted stays up. `torqx_init.q` sets `result` only once init completes, so ask each process for it:
 
 ```bash
-for p in 5307 5300 5302 5303 5304 5305 5306 5309 5310; do
+for p in 5307 5300 5301 5302 5303 5304 5305 5306 5309 5310; do
   q -q <<<"h:hopen\`::$p; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
 done
 #> 5307 discovery1
@@ -496,6 +499,45 @@ timespan type, so a quoted `"0D00:00:10"` arrives as a string and the process fa
 `torqx.sh start rdb1 -retry 0D00:00:10`.) `discoveryregister`/`connectionsfromdiscovery` are set
 to `1b` there too, and `hopentimeout` to 200ms (builtin 2s): a process waiting on a peer dials
 every dead peer on each poll. `discovery1` keeps TorQ's `0D` (no retries) from its builtin settings.
+
+---
+
+## 10. Chained tickerplant (`chainedtp1`)
+
+`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. Here it sits between the
+tickerplant and the rdb/wdb:
+
+```
+feed1 → tickerplant1 → chainedtp1 → rdb1 / wdb1 → hdb / idb1 → gateway1
+```
+
+`rdb1.toml` and `wdb1.toml` set `tickerplanttypes = "chainedtp"`. chainedtp1 finds tickerplant1 by
+name through discovery (builtin setting `tickerplantname`), waiting for it as long as it takes,
+then republishes every update tick by tick.
+
+**Counts at each hop.** With the feed stopped (`torqx.sh stop feed1`) the counts settle and agree:
+
+```bash
+q -q <<'EOF'
+q:{[p;x] h:hopen p; r:h x; hclose h; r};
+-1 "chainedtp1: ",-3!q[`::5301;".u.icounts"];
+-1 "rdb1:       ",-3!q[`::5304;"`trade`quote!(count trade;count quote)"];
+\\
+EOF
+#> chainedtp1: `trade`quote!276 918
+#> rdb1:       `trade`quote!276 918
+```
+
+wdb1 holds the same rows, split between memory and the flushed partition under `wdb/`.
+
+**End of day** follows the chain: tickerplant1 → chainedtp1 → rdb1/wdb1, then the wdb writes the
+partition into the hdb and reloads the hdb, rdb, idb and gateway.
+
+**Restarts.**
+- rdb1 and wdb1 get no log replay through chainedtp1. When restarted, they start empty for the
+  day, and wdb1's partition for that day then holds only what arrived after the restart.
+- rdb1 and wdb1 don't resubscribe when chainedtp1 restarts. If chainedtp1 restarts, restart rdb1
+  and wdb1 after it.
 
 ---
 

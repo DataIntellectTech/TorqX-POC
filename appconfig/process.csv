@@ -1,6 +1,7 @@
 host,port,proctype,procname
 localhost,5307,discovery,discovery1
 localhost,5300,tickerplant,tickerplant1
+localhost,5301,chainedtp,chainedtp1
 localhost,5302,hdb,hdb
 localhost,0,loader,loader1
 localhost,5303,feed,feed1
