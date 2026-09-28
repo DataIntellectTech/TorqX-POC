@@ -67,9 +67,12 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 
 ```bash
 source ./setenv.sh
-torqx.sh start discovery1                  # discovery first - every other process finds its peers through it (§9)
-until q -q <<<'exit 0=@[hopen;(`::5307;500);0]' >/dev/null 2>&1; do sleep 0.5; done   # wait until it answers
-torqx.sh start          # start every other row in appconfig/process.csv (discovery1 is already running)
+waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1;500);0]" >/dev/null 2>&1; do sleep 0.5; done; }   # block until port $1 answers
+
+torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
+torqx.sh start tickerplant1
+for p in hdb loader1 feed1 rdb1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
+waitq 5304; torqx.sh start gateway1        # gateway last, once rdb1 answers - it registers its backends at startup
 torqx.sh status
 #> discovery1      discovery  up    pid=...
 #> tickerplant1    tickerplant up    pid=...
@@ -79,6 +82,24 @@ torqx.sh status
 #> wdb1            wdb        up    pid=...
 #> gateway1        gateway    up    pid=...
 #> loader1         loader     down            # one-shot loader; exits after its run hook
+```
+
+**Verify with a query, not `torqx.sh status`.** `status` reports the pid, and a process whose init
+aborted stays up. `torqx_init.q` sets `result` only once init completes, so ask each process for it:
+
+```bash
+for p in 5307 5300 5302 5303 5304 5305 5306 5309 5310; do
+  q -q <<<"h:hopen\`::$p; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
+done
+#> 5307 discovery1
+#> 5300 tickerplant1  ...
+```
+
+A backend that comes up after the gateway (a restarted rdb, say) is not routed to until the
+gateway re-registers its backends. Refresh it by hand:
+
+```bash
+q -q <<<'h:hopen`::5306; h(`.gw.reload;`reloadend); exit 0'
 ```
 
 > **Shared hosts: `TORQXSTACKID` must be unique per user.** `torqx.sh` keys both its liveness
@@ -423,8 +444,8 @@ carries the client half (`.servers.*` at the legacy root names). As in TorQ, eve
 registers with discovery and asks it for the proctypes it needs, rather than dialling
 `process.csv` directly. `discovery1` itself dials every `process.csv` row once at startup.
 
-**Start order.** Discovery first, and wait until it answers (§1). Requires kdbx-modules
-feature-rediscovery 0660955+.
+**Start order** (§1). Discovery, waiting until it answers; the tickerplant; the rest; the gateway
+last, once rdb1 answers. Requires kdbx-modules feature-rediscovery 0660955+.
 
 **The registry** — what discovery knows, and which peers it holds a live handle to:
 
@@ -473,7 +494,8 @@ the app sets `retry` and `discoveryretry` to 10s. These are **`.q`, not TOML**: 
 timespan type, so a quoted `"0D00:00:10"` arrives as a string and the process fails to start
 (`'type` in `servers.init`), and a bare integer is read as a zero period. (A launch flag works too:
 `torqx.sh start rdb1 -retry 0D00:00:10`.) `discoveryregister`/`connectionsfromdiscovery` are set
-to `1b` there too. `discovery1` keeps TorQ's `0D` (no retries) from its builtin settings.
+to `1b` there too, and `hopentimeout` to 200ms (builtin 2s): a process waiting on a peer dials
+every dead peer on each poll. `discovery1` keeps TorQ's `0D` (no retries) from its builtin settings.
 
 ---
 
