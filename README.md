@@ -23,8 +23,8 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 
 ## 0. Prerequisites & layout
 
-TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses,
-branch `feature-rediscovery`, 0660955+) is already installed on the machine; we clone only the app.
+TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses)
+is already installed on the machine; we clone only the app.
 
 ```
 <parent>/
@@ -445,7 +445,7 @@ registers with discovery and asks it for the proctypes it needs, rather than dia
 `process.csv` directly. `discovery1` itself dials every `process.csv` row once at startup.
 
 **Start order** (§1). Discovery, waiting until it answers; the tickerplant; the rest; the gateway
-last, once rdb1 answers. Requires kdbx-modules feature-rediscovery 0660955+.
+last, once rdb1 answers.
 
 **The registry** — what discovery knows, and which peers it holds a live handle to:
 
