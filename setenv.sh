@@ -1,7 +1,7 @@
 #!/bin/bash
 # TorqX-POC project environment - project-owned config, not framework code.
 # Source this directly for ad-hoc interactive use (defines the `torqx` alias, so you
-# can run e.g. `torqx -p 5560` from anywhere once sourced), or let bin/torqx.sh source
+# can run e.g. `torqx -p 5302` from anywhere once sourced), or let bin/torqx.sh source
 # it automatically for orchestrated start/stop.
 
 # ${BASH_SOURCE[0]} always resolves to this file's own path, whether it's sourced
