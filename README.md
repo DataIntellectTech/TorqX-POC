@@ -19,6 +19,7 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 8. Versioning & dependency checks
 9. Discovery (`discovery1`)
 10. Chained tickerplant (`chainedtp1`)
+11. Client tracking
 
 ---
 
@@ -538,6 +539,27 @@ partition into the hdb and reloads the hdb, rdb, idb and gateway.
   day, and wdb1's partition for that day then holds only what arrived after the restart.
 - rdb1 and wdb1 don't resubscribe when chainedtp1 restarts. If chainedtp1 restarts, restart rdb1
   and wdb1 after it.
+
+---
+
+## 11. Client tracking
+
+Every process records its inbound connections in `.clients.clients`, with counts of queries,
+errors and bytes returned (`di.clienttracking`, wired in by di.torq). Ask the gateway after a few
+queries:
+
+```bash
+q -q <<'EOF'
+h:hopen`::5306;
+show h"select ipa,u,startp,lastp,hits,errs,sz,live:not null w from .clients.clients";
+\\
+EOF
+```
+
+- tickerplant1 records connections only; its query and publish path isn't touched.
+- Ticks (`upd`) skip client tracking on chainedtp1, rdb1 and wdb1.
+- Each connection shows one error at connect time: the connecting process asks for
+  `.proc.getattributes[]`, which these processes don't define.
 
 ---
 

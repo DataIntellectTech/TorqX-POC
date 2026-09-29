@@ -26,3 +26,4 @@
 "di.torq.proc.housekeeping" = "0.1.0"
 "di.torq.proc.discovery" = "0.1.0"
 "di.torq.proc.chainedtp" = "0.2.1"
+"di.clienttracking" = "0.2.0"
