@@ -493,13 +493,12 @@ kill <pid>; torqx.sh start discovery1
 # re-run the registry query: every w is filled again
 ```
 
-**Demo pace — `appconfig/settings/default.q`.** The builtin retry periods are TorQ's 5 minutes;
-the app sets `retry` and `discoveryretry` to 10s. These are **`.q`, not TOML**: TOML has no
-timespan type, so a quoted `"0D00:00:10"` arrives as a string and the process fails to start
-(`'type` in `servers.init`), and a bare integer is read as a zero period. (A launch flag works too:
-`torqx.sh start rdb1 -retry 0D00:00:10`.) `discoveryregister`/`connectionsfromdiscovery` are set
-to `1b` there too, and `hopentimeout` to 200ms (builtin 2s): a process waiting on a peer dials
-every dead peer on each poll. `discovery1` keeps TorQ's `0D` (no retries) from its builtin settings.
+**Demo pace — `appconfig/settings/default.toml`.** The builtin retry periods are TorQ's 5 minutes;
+the app sets `retry` and `discoveryretry` to 10s. TOML has no timespan type, so they're written
+as strings (`"0D00:00:10"`), which di.torq.servers converts; a number of seconds works too.
+`discoveryregister`/`connectionsfromdiscovery` are set to true there, and `hopentimeout` to 200ms
+(builtin 2s): a process waiting on a peer dials every dead peer on each poll. `discovery1` keeps
+TorQ's `0D` (no retries) from its builtin settings.
 
 ---
 
@@ -515,9 +514,9 @@ feed1 → tickerplant1 → chainedtp1 → rdb1
 
 `rdb1.toml` sets `tickerplanttypes = "chainedtp"`, `wdb1.toml` `"tickerplant"`. chainedtp1 finds
 tickerplant1 by name through discovery (builtin setting `tickerplantname`), waiting for it as long
-as it takes, then republishes every update tick by tick.
+as it takes, then republishes in one-second batches (`pubinterval` in `chainedtp1.toml`).
 
-**Its own log.** `chainedtp1.q` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
+**Its own log.** `chainedtp1.toml` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
 receives to `tplog/chainedtp1_<date>`, next to tickerplant1's `tplog/tp<date>`. rdb1 replays it
 when it connects:
 
