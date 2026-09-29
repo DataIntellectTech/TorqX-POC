@@ -1,4 +1,4 @@
-tickerplanttypes = "chainedtp"
+tickerplanttypes = "tickerplant"
 numrows = 500
 settimer = 5
 reloadorder = "hdb rdb idb"

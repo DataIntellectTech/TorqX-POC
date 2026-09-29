@@ -73,7 +73,7 @@ waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1;500);0]" >/dev/null 2>&1; do sle
 
 torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
 torqx.sh start tickerplant1
-torqx.sh start chainedtp1; waitq 5301      # rdb1/wdb1 subscribe to the chained tickerplant (§10)
+torqx.sh start chainedtp1; waitq 5301      # rdb1 subscribes to the chained tickerplant (§10)
 for p in hdb loader1 feed1 rdb1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
 waitq 5304; torqx.sh start gateway1        # gateway last, once rdb1 answers - it registers its backends at startup
 torqx.sh status
@@ -505,16 +505,26 @@ every dead peer on each poll. `discovery1` keeps TorQ's `0D` (no retries) from i
 
 ## 10. Chained tickerplant (`chainedtp1`)
 
-`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. Here it sits between the
-tickerplant and the rdb/wdb:
+`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. Here rdb1 takes its data
+through it and wdb1 straight from the tickerplant, so the two paths sit side by side:
 
 ```
-feed1 → tickerplant1 → chainedtp1 → rdb1 / wdb1 → hdb / idb1 → gateway1
+feed1 → tickerplant1 → chainedtp1 → rdb1
+                    └→ wdb1
 ```
 
-`rdb1.toml` and `wdb1.toml` set `tickerplanttypes = "chainedtp"`. chainedtp1 finds tickerplant1 by
-name through discovery (builtin setting `tickerplantname`), waiting for it as long as it takes,
-then republishes every update tick by tick.
+`rdb1.toml` sets `tickerplanttypes = "chainedtp"`, `wdb1.toml` `"tickerplant"`. chainedtp1 finds
+tickerplant1 by name through discovery (builtin setting `tickerplantname`), waiting for it as long
+as it takes, then republishes every update tick by tick.
+
+**Its own log.** `chainedtp1.q` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
+receives to `tplog/chainedtp1_<date>`, next to tickerplant1's `tplog/tp<date>`. rdb1 replays it
+when it connects:
+
+```bash
+grep replayed /tmp/torqx_${TORQXSTACKID}_rdb1.log
+#> ... [rdb] subscribed; replayed 215 message(s), partition date 2026.09.29
+```
 
 **Counts at each hop.** With the feed stopped (`torqx.sh stop feed1`) the counts settle and agree:
 
@@ -531,14 +541,8 @@ EOF
 
 wdb1 holds the same rows, split between memory and the flushed partition under `wdb/`.
 
-**End of day** follows the chain: tickerplant1 → chainedtp1 → rdb1/wdb1, then the wdb writes the
-partition into the hdb and reloads the hdb, rdb, idb and gateway.
-
-**Restarts.**
-- rdb1 and wdb1 get no log replay through chainedtp1. When restarted, they start empty for the
-  day, and wdb1's partition for that day then holds only what arrived after the restart.
-- rdb1 and wdb1 don't resubscribe when chainedtp1 restarts. If chainedtp1 restarts, restart rdb1
-  and wdb1 after it.
+**End of day** reaches rdb1 through chainedtp1, which rolls to a new log, and wdb1 directly. The wdb
+writes the partition into the hdb and reloads the hdb, rdb, idb and gateway.
 
 ---
 
