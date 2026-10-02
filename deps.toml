@@ -3,11 +3,11 @@
 # kdbx-modules/di/torq/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
-"di.torq" = "0.4.0"
+"di.torq" = "0.5.0"
 "di.torq.config" = "0.1.0"
 "di.util.log" = "0.1.0"
 "di.torq.proc.hdb" = "0.1.0"
-"di.torq.servers" = "0.3.0"
+"di.torq.servers" = "0.5.0"
 "di.torq.handlers" = "0.1.0"
 "di.torq.proc.tickerplant" = "0.1.0"
 # the tp-log lifecycle module. Renamed di.tplog -> di.tplogmgr during the kdbx-modules
@@ -19,6 +19,11 @@
 "di.asyncdispatch" = "0.1.0"
 "di.serverselect" = "0.1.0"
 "di.dataaccess" = "0.2.0"
-"di.subscriptions" = "0.1.0"
+"di.subscriptions" = "0.2.0"
 "di.dbwrite" = "0.1.0"
-"di.pubsub" = "0.1.0"
+"di.pubsub" = "0.2.0"
+"di.torq.proc.idb" = "0.1.0"
+"di.torq.proc.housekeeping" = "0.1.0"
+"di.torq.proc.discovery" = "0.1.0"
+"di.torq.proc.chainedtp" = "0.2.1"
+"di.clienttracking" = "0.2.0"

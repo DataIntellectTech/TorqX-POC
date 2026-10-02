@@ -1,1 +1,12 @@
-# app-level defaults - empty for v0
+# app-level defaults
+
+# take connections from discovery1 and register with it
+discoveryregister = true
+connectionsfromdiscovery = true
+
+# demo pace: retry dead connections and discovery every 10s (discovery1 keeps 0D from its builtin settings)
+retry = "0D00:00:10"
+discoveryretry = "0D00:00:10"
+
+# ms; the wait loop dials every dead peer on each poll
+hopentimeout = 200
