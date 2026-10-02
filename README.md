@@ -17,13 +17,16 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 6. A custom process: `feed.q`
 7. Config: TOML support (a new innovation)
 8. Versioning & dependency checks
+9. Discovery (`discovery1`)
+10. Chained tickerplant (`chainedtp1`)
+11. Client tracking
 
 ---
 
 ## 0. Prerequisites & layout
 
-TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses,
-branch `feature-torqx`) is already installed on the machine; we clone only the app.
+TorqX ships as **two** repos. For the demo, kdbx-modules (the framework and every module it uses)
+is already installed on the machine; we clone only the app.
 
 ```
 <parent>/
@@ -66,9 +69,17 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 
 ```bash
 source ./setenv.sh
-torqx.sh start          # start every process.csv row whose startwithall is 1
+waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1;500);0]" >/dev/null 2>&1; do sleep 0.5; done; }   # block until port $1 answers
+
+torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
+torqx.sh start stp1; waitq 5311
+torqx.sh start sctp1; waitq 5312           # rdb1 subscribes to the chained segmented tickerplant (§12)
+for p in hdb loader1 feed1 rdb1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
+waitq 5304; torqx.sh start gateway1        # gateway last, once rdb1 answers - it registers its backends at startup
 torqx.sh status
-#> tickerplant1    tickerplant down          # classic tickerplant; startwithall 0 (§9)
+#> discovery1      discovery  up    pid=...
+#> tickerplant1    tickerplant down          # classic tickerplant; startwithall 0 (§12)
+#> chainedtp1      chainedtp  down           # likewise
 #> stp1            segmentedtp up    pid=...
 #> sctp1           segmentedchainedtp up    pid=...
 #> hdb             hdb        up    pid=...
@@ -77,8 +88,34 @@ torqx.sh status
 #> wdb1            wdb        up    pid=...
 #> gateway1        gateway    up    pid=...
 #> loader1         loader     down            # one-shot loader; exits after its run hook
-#> tickerlogreplay1 tickerlogreplay down       # run on demand (§10)
+#> tickerlogreplay1 tickerlogreplay down       # run on demand (§13)
 ```
+
+**Verify with a query, not `torqx.sh status`.** `status` reports the pid, and a process whose init
+aborted stays up. `torqx_init.q` sets `result` only once init completes, so ask each process for it:
+
+```bash
+for p in 5307 5300 5301 5302 5303 5304 5305 5306 5309 5310; do
+  q -q <<<"h:hopen\`::$p; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
+done
+#> 5307 discovery1
+#> 5300 tickerplant1  ...
+```
+
+A backend that comes up after the gateway (a restarted rdb, say) is not routed to until the
+gateway re-registers its backends. Refresh it by hand:
+
+```bash
+q -q <<<'h:hopen`::5306; h(`.gw.reload;`reloadend); exit 0'
+```
+
+> **Shared hosts: `TORQXSTACKID` must be unique per user.** `torqx.sh` keys both its liveness
+> check and its log paths (`/tmp/torqx_<stackid>_<procname>.log`) on it, so two people running
+> this repo under the same id see each other's processes as their own — `torqx.sh status` lists
+> them, `torqx.sh stop` would kill them, and the second to start cannot write its logs. This has
+> already happened on `homer`. `setenv.sh` therefore defaults to `torqx-poc-${USER}`. Ports are a
+> separate matter: `process.csv` ports are absolute, so a second stack on one host needs its own
+> port block too.
 
 `torqx.sh` is deliberately thin: it reads `process.csv` only to enumerate rows and look up a
 port; it never resolves *identity* (that's di.torq's job — §4). Start/stop one or all:
@@ -120,7 +157,7 @@ TorqX-POC/
 │       ├── default.toml          #   app-wide defaults      (FSP: default.q)
 │       ├── tickerplant1.toml     #   per-process settings   (FSP: tickerplant.q, rdb.q, ...)
 │       ├── rdb1.toml  wdb1.toml  gateway1.toml  feed1.toml  hdb.toml  ...
-│       ├── stp1.q  sctp1.q  tickerlogreplay1.q   #   .q where values are symbols
+│       ├── default.q  chainedtp1.q  stp1.q  sctp1.q  tickerlogreplay1.q   #   .q where values are symbols or timespans
 └── code/
     └── processes/
         ├── feed.q                # custom process  (FSP: code/tick/feed.q)
@@ -140,8 +177,8 @@ finds everything where they expect it.
 | Settings format | `.q` (executable) | **`.toml`** (inert data) — `.q` still supported (§7) |
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
-| Tickerplant | segmented (STP) | segmented (`stp1`, chained `sctp1`); classic TP by config (§9) |
-| Not yet built | discovery, monitor, DQC/DQE, sort-worker, kill | — (deferred per plan) |
+| Tickerplant | segmented (STP) | segmented (`stp1`, chained `sctp1`); classic TP by config (§12) |
+| Not yet built | monitor, DQC/DQE, sort-worker, kill | — (deferred per plan) |
 
 The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (the FSP's example
 `countbysym`/`hloc`) is auto-loaded into the rdb at startup, at root, exactly as TorQ's
@@ -408,7 +445,132 @@ altogether is a silent no-op — the whole feature is opt-in.)
 
 ---
 
-## 9. Tickerplant type: segmented or classic
+## 9. Discovery (`discovery1`)
+
+`di.torq.proc.discovery` is a one-to-one port of TorQ's discovery service; `di.torq.servers` 0.4.0
+carries the client half (`.servers.*` at the legacy root names). As in TorQ, every process
+registers with discovery and asks it for the proctypes it needs, rather than dialling
+`process.csv` directly. `discovery1` itself dials every `process.csv` row once at startup.
+
+**Start order** (§1). Discovery, waiting until it answers; the tickerplant; the rest; the gateway
+last, once rdb1 answers.
+
+**The registry** — what discovery knows, and which peers it holds a live handle to:
+
+```bash
+q -q <<'EOF'
+h:hopen`::5307;
+show h"select procname,proctype,hpup,w from .servers.SERVERS";
+\\
+EOF
+#> procname      proctype     hpup                    w
+#> discovery1    discovery    :homer...:5307
+#> tickerplant1  tickerplant  :homer...:5300          # <- listed from process.csv, no handle
+#> housekeeping1 housekeeping :homer...:5310          # <- likewise
+#> hdb           hdb          :homer...:5302          6
+#> loader1       loader       :homer...:0             # <- one-shot; registered, then exited
+#> feed1  rdb1  wdb1  gateway1  idb1 ...                 # <- each registered itself, live handle
+```
+
+The tickerplant and housekeeping never register themselves (neither calls `servers.startup`, as
+in TorQ); they are listed from discovery's own `process.csv` sweep, with a live handle only if they
+were already up when discovery started. That is enough for peers: discovery hands out every row
+whether or not it holds a handle, and the peer dials it itself.
+
+**A late process registers itself.** Start one that `process.csv` doesn't know about, with explicit
+identity, then re-run the registry query — it appears, and subscribers (the gateway, for `hdb`)
+are told and dial it:
+
+```bash
+torqx -proctype hdb -procname hdb2 -p 5308
+#> ... [conn] registering with discovery services
+```
+
+**Kill discovery and restart it.** Peers lose their discovery handle but keep their other
+connections. On restart discovery dials every `process.csv` row and tells each to re-register
+(`.servers.autodiscovery`), so they are all back within milliseconds; a process not in
+`process.csv` (`hdb2`) comes back on its own `discoveryretry` timer (10s here).
+
+```bash
+torqx.sh status discovery1          # note the pid
+kill <pid>; torqx.sh start discovery1
+# re-run the registry query: every w is filled again
+```
+
+**Demo pace — `appconfig/settings/default.q` and `default.toml`.** The builtin retry periods are
+TorQ's 5 minutes; `default.q` sets `retry` and `discoveryretry` to 10s (`.q`, since TOML has no
+timespan type). `default.toml` sets `discoveryregister`/`connectionsfromdiscovery` to true, and `hopentimeout` to 200ms
+(builtin 2s): a process waiting on a peer dials every dead peer on each poll. `discovery1` keeps
+TorQ's `0D` (no retries) from its builtin settings.
+
+---
+
+## 10. Chained tickerplant (`chainedtp1`)
+
+`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. Here rdb1 takes its data
+through it and wdb1 straight from the tickerplant, so the two paths sit side by side (classic
+mode, §12):
+
+```
+feed1 → tickerplant1 → chainedtp1 → rdb1
+                    └→ wdb1
+```
+
+`rdb1.toml` sets `tickerplanttypes = "chainedtp"`, `wdb1.toml` `"tickerplant"`. chainedtp1 finds
+tickerplant1 by name through discovery (builtin setting `tickerplantname`), waiting for it as long
+as it takes, then republishes in one-second batches (`pubinterval` in `chainedtp1.q`).
+
+**Its own log.** `chainedtp1.q` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
+receives to `tplog/chainedtp1_<date>`, next to tickerplant1's `tplog/tp<date>`. rdb1 replays it
+when it connects:
+
+```bash
+grep replayed /tmp/torqx_${TORQXSTACKID}_rdb1.log
+#> ... [rdb] subscribed; replayed 215 message(s), partition date 2026.09.29
+```
+
+**Counts at each hop.** With the feed stopped (`torqx.sh stop feed1`) the counts settle and agree:
+
+```bash
+q -q <<'EOF'
+q:{[p;x] h:hopen p; r:h x; hclose h; r};
+-1 "chainedtp1: ",-3!q[`::5301;".u.icounts"];
+-1 "rdb1:       ",-3!q[`::5304;"`trade`quote!(count trade;count quote)"];
+\\
+EOF
+#> chainedtp1: `trade`quote!276 918
+#> rdb1:       `trade`quote!276 918
+```
+
+wdb1 holds the same rows, split between memory and the flushed partition under `wdb/`.
+
+**End of day** reaches rdb1 through chainedtp1, which rolls to a new log, and wdb1 directly. The wdb
+writes the partition into the hdb and reloads the hdb, rdb, idb and gateway.
+
+---
+
+## 11. Client tracking
+
+Every process records its inbound connections in `.clients.clients`, with counts of queries,
+errors and bytes returned (`di.clienttracking`, wired in by di.torq). Ask the gateway after a few
+queries:
+
+```bash
+q -q <<'EOF'
+h:hopen`::5306;
+show h"select ipa,u,startp,lastp,hits,errs,sz,live:not null w from .clients.clients";
+\\
+EOF
+```
+
+- tickerplant1 records connections only; its query and publish path isn't touched.
+- Ticks (`upd`) skip client tracking on chainedtp1, rdb1 and wdb1.
+- Each connection shows one error at connect time: the connecting process asks for
+  `.proc.getattributes[]`, which these processes don't define.
+
+---
+
+## 12. Tickerplant type: segmented or classic
 
 As in the FSP, the tickerplant type is config only, one type at a time. The default is segmented:
 
@@ -421,17 +583,17 @@ To run the classic tickerplant instead:
 
 | File | Segmented (default) | Classic |
 |---|---|---|
-| `rdb1.toml` `tickerplanttypes` | `"segmentedchainedtp"` | `"tickerplant"` |
+| `rdb1.toml` `tickerplanttypes` | `"segmentedchainedtp"` | `"chainedtp"` |
 | `wdb1.toml` `tickerplanttypes` | `"segmentedtp"` | `"tickerplant"` |
 | `feed1.toml` `connections` | `["segmentedtp"]` | `["tickerplant"]` |
-| `process.csv` `startwithall` | `stp1`, `sctp1` 1; `tickerplant1` 0 | `tickerplant1` 1; `stp1`, `sctp1` 0 |
+| `process.csv` `startwithall` | `stp1`, `sctp1` 1; `tickerplant1`, `chainedtp1` 0 | `tickerplant1`, `chainedtp1` 1; `stp1`, `sctp1` 0 |
 
 Subscribers use `.sub.subscribe`, which handles either type. With `autoreconnect = true` (`default.toml`), rdb1
 and wdb1 resubscribe when their tickerplant comes back; sctp1 exits if stp1 goes, so restart stp1 then sctp1.
 The feed does not reconnect: restart feed1 after a tickerplant restart. stp1 logs under `$KDBTPLOG`
 (`tplog/stp1_<date>`).
 
-## 10. Replaying tickerplant logs
+## 13. Replaying tickerplant logs
 
 `tickerlogreplay1` rebuilds a day from stp1's logs into `hdbreplay/`, then exits. Set the date's log directory
 in `appconfig/settings/tickerlogreplay1.q` (`tplogdir`), then:
@@ -439,6 +601,8 @@ in `appconfig/settings/tickerlogreplay1.q` (`tplogdir`), then:
 ```bash
 torqx.sh start tickerlogreplay1
 ```
+
+---
 
 ## Teardown
 

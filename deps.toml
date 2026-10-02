@@ -24,3 +24,8 @@
 "di.pubsub" = "0.4.0"
 "di.torq.proc.segmentedtp" = "0.2.0"
 "di.torq.proc.tickerlogreplay" = "0.1.0"
+"di.torq.proc.idb" = "0.1.0"
+"di.torq.proc.housekeeping" = "0.1.0"
+"di.torq.proc.discovery" = "0.1.0"
+"di.torq.proc.chainedtp" = "0.3.0"
+"di.clienttracking" = "0.2.0"

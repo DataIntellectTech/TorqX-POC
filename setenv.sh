@@ -10,7 +10,7 @@
 dirpath="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # TORQXHOME = the FRAMEWORK checkout (its di/torq/bin launcher + di/ modules), NOT this app.
-# This is now kdbx-modules (branch feature-torqx), the RFC-0001 consolidation base - the whole
+# This is now kdbx-modules, the RFC-0001 consolidation base - the whole
 # framework resolves from there and the legacy TorqX checkout is no longer used at all.
 # Default assumes kdbx-modules is a sibling of this project; if it lives elsewhere, set this to
 # that absolute path.
@@ -22,6 +22,12 @@ export TORQXAPPCONFIG="$dirpath/appconfig"
 # sample app they point at the same place. TorQ makes the same TORQAPPHOME/TORQDATAHOME split.
 export TORQXAPPHOME="$dirpath"
 export TORQXDATAHOME="$dirpath"
+# TORQXSTACKID namespaces one running stack from another. torqx.sh keys BOTH its pidfile/liveness
+# check and its log paths (/tmp/torqx_<stackid>_<procname>.log) on it, so two people running this
+# repo on the same host under the same id collide badly: each one's `torqx.sh status` reports the
+# OTHER's processes as its own, `torqx.sh stop` would kill them, and the second to start cannot
+# write its logs ("Permission denied" on a file the first user owns). Suffixing the user keeps
+# each stack independent on a shared box while staying a single committed default.
 export TORQXSTACKID="torqx-poc-${USER}"
 # segmentedtp log root (stp1 logs under $KDBTPLOG/stp1_<date>)
 export KDBTPLOG="$TORQXDATAHOME/tplog"

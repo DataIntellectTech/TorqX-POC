@@ -4,7 +4,7 @@
 # until the wdb calls reload[date] (dropping exactly the prior day). Schema comes from the
 # tickerplant (via subdetails), not a local database.q. See kdbx-modules/di/torq/proc/rdb.
 
-tickerplanttypes = "segmentedchainedtp"   # classic: "tickerplant"
+tickerplanttypes = "segmentedchainedtp"   # classic: "chainedtp"
 hdbtypes = "hdb"                   # proctype(s) to reload at EOD (the wdb triggers the actual reload)
 hdbdir = "hdb"                     # HDB root (relative to TORQXAPPHOME)
 replaylog = true                   # replay the tp log on startup to recover intraday state

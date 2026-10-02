@@ -1,2 +1,10 @@
 # app-level defaults
+
+# take connections from discovery1 and register with it
+discoveryregister = true
+connectionsfromdiscovery = true
+
 autoreconnect = true   # resubscribe after a tickerplant restart
+
+# ms; the wait loop dials every dead peer on each poll
+hopentimeout = 200

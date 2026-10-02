@@ -1,5 +1,7 @@
 host,port,proctype,procname,startwithall
+localhost,5307,discovery,discovery1,1
 localhost,5300,tickerplant,tickerplant1,0
+localhost,5301,chainedtp,chainedtp1,0
 localhost,5311,segmentedtp,stp1,1
 localhost,5312,segmentedchainedtp,sctp1,1
 localhost,5302,hdb,hdb,1
@@ -7,5 +9,7 @@ localhost,0,loader,loader1,1
 localhost,5303,feed,feed1,1
 localhost,5304,rdb,rdb1,1
 localhost,5305,wdb,wdb1,1
+localhost,5309,idb,idb1,1
+localhost,5310,housekeeping,housekeeping1,1
 localhost,5306,gateway,gateway1,1
 localhost,0,tickerlogreplay,tickerlogreplay1,0
