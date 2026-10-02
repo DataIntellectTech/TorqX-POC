@@ -1,1 +1,2 @@
-# app-level defaults - empty for v0
+# app-level defaults
+autoreconnect = true   # resubscribe after a tickerplant restart

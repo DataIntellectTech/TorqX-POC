@@ -13,14 +13,14 @@
 /   2. the literals of FSP lines 4-22 (syms/names/prices/mode/cond/ex/src/side) and the
 /      len/maxn/qpt constants are read from feed1.toml, matching the FSP values exactly.
 /   3. connection is via di.torq.servers (init/startup/waitfortype/gethandlebytype, proctype
-/      `tickerplant) instead of .servers.startupdepcycles + .servers.gethandlebytype
+/      from connections) instead of .servers.startupdepcycles + .servers.gethandlebytype
 /      [`segmentedtickerplant;`any].
 /   4. publishing is scheduled via the injected di.timer (whole-second granularity)
 /      instead of .timer.repeat at 0D00:00:00.200 - so the cadence is coarser, but the
 /      per-fire feed[] logic (and thus every volume/price relationship) is unchanged.
 /   5. FSP's `init` (a manual historical-backfill routine) is renamed `backfill` here,
 /      because di.torq requires .feed.init to be the [config;deps] process entry point.
-/ The trade/quote batches carry NO time column; di.torq.proc.tickerplant.upd stamps time itself
+/ The trade/quote batches carry NO time column; the tickerplant stamps time itself
 / (keeping replay idempotent), exactly matching what the FSP tickerplant does with .u.upd.
 
 \d .feed
@@ -144,9 +144,11 @@ init:{[config;deps]
   svc::deps`servers;
   (svc`startup)[config];
   timeout:$[`waittimeout in key config;"j"$config`waittimeout;30000];
-  if[not (svc`waitfortype)[`tickerplant;timeout;500];
-    '"feed: no tickerplant connection within ",(string timeout),"ms - cannot start feed"];
-  h::(svc`gethandlebytype)[`tickerplant;`any];
+  / the tickerplant proctype is the first in connections (any others are ignored)
+  tpt:`$first config`connections;
+  if[not (svc`waitfortype)[tpt;timeout;500];
+    '"feed: no ",(string tpt)," connection within ",(string timeout),"ms - cannot start feed"];
+  h::(svc`gethandlebytype)[tpt;`any];
 
   / schedule the publish tick (di.timer divergence from FSP's .timer.repeat @ 200ms;
   / di.timer mode-1h period is whole seconds)

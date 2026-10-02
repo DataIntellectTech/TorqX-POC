@@ -4,7 +4,7 @@
 # and RDB (rdb1 runs reloadenabled, so it drops its prior day on the reload). Schema comes from
 # the tickerplant (via subdetails), not a local database.q. See kdbx-modules/di/torq/proc/wdb.
 
-tickerplanttypes = "tickerplant"   # proctype(s) to subscribe to
+tickerplanttypes = "segmentedtp"   # classic: "tickerplant"
 hdbtypes = "hdb"                   # proctype(s) to move partitions to / reload at EOD
 rdbtypes = "rdb"                   # proctype(s) to reload[date] at EOD (drop their prior day)
 savedir = "wdb"                    # wdb working-data root (relative to TORQXDATAHOME)
