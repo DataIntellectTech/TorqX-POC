@@ -1,0 +1,10 @@
+# sctp1: chained off stp1; rdb1 replays stp1's logs
+# replaces the builtin sctp section, so every key is set
+[sctp]
+chainedtp = true
+loggingmode = "parent"
+tickerplantname = "stp1"
+subscribeto = ""     # all tables
+subscribesyms = ""   # all syms
+replay = false
+schema = true

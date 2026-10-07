@@ -1,0 +1,4 @@
+# chainedtp1 logs what it receives so rdb1 can replay it on connect
+createlogfile = true
+logdir = "tplog"             # relative to TORQXAPPHOME, where torqx.sh starts processes
+pubinterval = "0D00:00:01"   # batching interval; "0D00:00:00" publishes immediately

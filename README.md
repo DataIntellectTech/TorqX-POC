@@ -157,7 +157,6 @@ TorqX-POC/
 │       ├── default.toml          #   app-wide defaults      (FSP: default.q)
 │       ├── tickerplant1.toml     #   per-process settings   (FSP: tickerplant.q, rdb.q, ...)
 │       ├── rdb1.toml  wdb1.toml  gateway1.toml  feed1.toml  hdb.toml  ...
-│       ├── default.q  chainedtp1.q  stp1.q  sctp1.q  tickerlogreplay1.q   #   .q where values are symbols or timespans
 └── code/
     └── processes/
         ├── feed.q                # custom process  (FSP: code/tick/feed.q)
@@ -497,9 +496,10 @@ kill <pid>; torqx.sh start discovery1
 # re-run the registry query: every w is filled again
 ```
 
-**Demo pace — `appconfig/settings/default.q` and `default.toml`.** The builtin retry periods are
-TorQ's 5 minutes; `default.q` sets `retry` and `discoveryretry` to 10s (`.q`, since TOML has no
-timespan type). `default.toml` sets `discoveryregister`/`connectionsfromdiscovery` to true, and `hopentimeout` to 200ms
+**Demo pace — `appconfig/settings/default.toml`.** The builtin retry periods are TorQ's 5 minutes;
+the app sets `retry` and `discoveryretry` to 10s. TOML has no timespan type, so they're written
+as strings (`"0D00:00:10"`), which di.torq.servers converts; a number of seconds works too.
+`discoveryregister`/`connectionsfromdiscovery` are set to true there, and `hopentimeout` to 200ms
 (builtin 2s): a process waiting on a peer dials every dead peer on each poll. `discovery1` keeps
 TorQ's `0D` (no retries) from its builtin settings.
 
@@ -518,9 +518,9 @@ feed1 → tickerplant1 → chainedtp1 → rdb1
 
 `rdb1.toml` sets `tickerplanttypes = "chainedtp"`, `wdb1.toml` `"tickerplant"`. chainedtp1 finds
 tickerplant1 by name through discovery (builtin setting `tickerplantname`), waiting for it as long
-as it takes, then republishes in one-second batches (`pubinterval` in `chainedtp1.q`).
+as it takes, then republishes in one-second batches (`pubinterval` in `chainedtp1.toml`).
 
-**Its own log.** `chainedtp1.q` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
+**Its own log.** `chainedtp1.toml` sets `createlogfile` and `logdir`, so chainedtp1 writes what it
 receives to `tplog/chainedtp1_<date>`, next to tickerplant1's `tplog/tp<date>`. rdb1 replays it
 when it connects:
 
@@ -596,7 +596,7 @@ The feed does not reconnect: restart feed1 after a tickerplant restart. stp1 log
 ## 13. Replaying tickerplant logs
 
 `tickerlogreplay1` rebuilds a day from stp1's logs into `hdbreplay/`, then exits. Set the date's log directory
-in `appconfig/settings/tickerlogreplay1.q` (`tplogdir`), then:
+in `appconfig/settings/tickerlogreplay1.toml` (`tplogdir`), then:
 
 ```bash
 torqx.sh start tickerlogreplay1
