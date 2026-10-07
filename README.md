@@ -602,6 +602,13 @@ in `appconfig/settings/tickerlogreplay1.toml` (`tplogdir`), then:
 torqx.sh start tickerlogreplay1
 ```
 
+housekeeping1 archives a day's directory to `tplog/stp1_<date>.tar.gz` once it is a day old. Restore it
+in place before replaying (the archive holds the absolute path):
+
+```bash
+tar -xzf tplog/stp1_<date>.tar.gz -C /
+```
+
 ---
 
 ## Teardown
