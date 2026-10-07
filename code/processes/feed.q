@@ -8,7 +8,7 @@
 / in database.q, which is the FSP schema), so it lives as a custom process in
 / code/processes/ alongside loader.q, loaded by di.torq via .feed.init[config;deps].
 / ---
-/ Divergences from the FSP original, each forced by di.torq/TorqX (not stylistic):
+/ Divergences from the FSP original, 1-5 forced by di.torq/TorqX (not stylistic), 6 chosen:
 /   1. everything lives under \d .feed (custom-process convention), not root.
 /   2. the literals of FSP lines 4-22 (syms/names/prices/mode/cond/ex/src/side) and the
 /      len/maxn/qpt constants are read from feed1.toml, matching the FSP values exactly.
@@ -20,6 +20,8 @@
 /      per-fire feed[] logic (and thus every volume/price relationship) is unchanged.
 /   5. FSP's `init` (a manual historical-backfill routine) is renamed `backfill` here,
 /      because di.torq requires .feed.init to be the [config;deps] process entry point.
+/   6. feed[] survives a tickerplant restart (see feed): a demo convenience the FSP's dummy
+/      feed lacks; a real feedhandler brings its own reconnection.
 / The trade/quote batches carry NO time column; the tickerplant stamps time itself
 / (keeping replay idempotent), exactly matching what the FSP tickerplant does with .u.upd.
 
@@ -81,10 +83,12 @@ q:{
  i:qx n:qn+til x;p:qp n;qn+:x;
  (s i;p-qb n;p+qa n;`long$bidmap[s i]*vol x;`long$askmap[s i]*vol x;x?m;e i;raze 1?'srcmap[s i])}
 
-/ one publish tick (FSP lines 90-92): randomly a trade OR quote batch, over the handle
-feed:{h$[rand 2;
+/ one publish tick (FSP lines 90-92): randomly a trade OR quote batch. Divergence: the handle
+/ is looked up each tick and a tick with no tickerplant is skipped, so a tickerplant restart
+/ neither disables the timer job nor publishes on a dead handle.
+feed:{@[{(svc`gethandlebytype)[tpt;`any]$[rand 2;
  (".u.upd";`trade;t 1+rand maxn);
- (".u.upd";`quote;q 1+rand qpt*maxn)];}
+ (".u.upd";`quote;q 1+rand qpt*maxn)]};::;{}];}
 
 / same, but prepending an explicit timestamp column - used by backfill (FSP lines 94-96).
 / di.torq.proc.tickerplant.upd keeps a leading timestamp as-is, so backfilled history stays put.
@@ -145,7 +149,7 @@ init:{[config;deps]
   (svc`startup)[config];
   timeout:$[`waittimeout in key config;"j"$config`waittimeout;30000];
   / the tickerplant proctype is the first in connections (any others are ignored)
-  tpt:`$first config`connections;
+  tpt::`$first config`connections;
   if[not (svc`waitfortype)[tpt;timeout;500];
     '"feed: no ",(string tpt)," connection within ",(string timeout),"ms - cannot start feed"];
   h::(svc`gethandlebytype)[tpt;`any];

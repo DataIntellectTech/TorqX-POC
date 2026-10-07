@@ -590,7 +590,8 @@ To run the classic tickerplant instead:
 
 Subscribers use `.sub.subscribe`, which handles either type. With `autoreconnect = true` (`default.toml`), rdb1
 and wdb1 resubscribe when their tickerplant comes back; sctp1 exits if stp1 goes, so restart stp1 then sctp1.
-The feed does not reconnect: restart feed1 after a tickerplant restart. stp1 logs under `$KDBTPLOG`
+feed1 resumes publishing once di.torq.servers reconnects it (the 10s retry). A resubscribe does not replay, so a
+subscriber misses what its tickerplant took while it was away; restart it to rebuild from the logs. stp1 logs under `$KDBTPLOG`
 (`tplog/stp1_<date>`).
 
 ## 13. Replaying tickerplant logs
