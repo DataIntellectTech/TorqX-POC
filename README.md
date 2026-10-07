@@ -596,12 +596,15 @@ subscriber misses what its tickerplant took while it was away; restart it to reb
 
 ## 13. Replaying tickerplant logs
 
-`tickerlogreplay1` rebuilds a day from stp1's logs into `hdbreplay/`, then exits. Set the date's log directory
-in `appconfig/settings/tickerlogreplay1.toml` (`tplogdir`), then:
+`tickerlogreplay1` rebuilds a day from stp1's logs into `hdbreplay/`, then exits. Pick the run on the command
+line, as in TorQ: any key of the `[replay]` section in `tickerlogreplay1.toml` can be given as `-.replay.<key>`:
 
 ```bash
-torqx.sh start tickerlogreplay1
+torqx.sh start tickerlogreplay1 -.replay.tplogdir tplog/stp1_<date>                    # into hdbreplay/
+torqx.sh start tickerlogreplay1 -.replay.tplogdir tplog/stp1_<date> -.replay.hdbdir hdb # into the live hdb
 ```
+
+Replaying into the live hdb replaces that date's partition (`clean`); reload the hdb afterwards.
 
 housekeeping1 archives a day's directory to `tplog/stp1_<date>.tar.gz` once it is a day old. Restore it
 in place before replaying (the archive holds the absolute path):
