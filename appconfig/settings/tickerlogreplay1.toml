@@ -4,7 +4,7 @@
 [replay]
 schemafile = "database.q"
 hdbdir = "hdbreplay"
-tplogdir = "tplog/stp1_2026.10.02"
+tplogdir = ""
 tplogfile = ""                         # a single log file instead of tplogdir
 segmentedmode = true                   # tplogdir is a segmented tickerplant log directory
 tablelist = "all"
