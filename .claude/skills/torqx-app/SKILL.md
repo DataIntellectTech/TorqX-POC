@@ -102,32 +102,38 @@ Run from the app directory (it sources `./setenv.sh`, or `$SETENV`):
 
 Use one for app-specific processes (feeds, loaders) that aren't reusable `di.*` modules. The framework needs `.<proctype>.init[config;deps]` to exist after loading the file, and calls `.<proctype>.run[]` if that exists.
 
-Write it with **full names, no `\d`**. A bare name inside a function then means root, so qualify everything:
+A custom process is a plain file loaded with `\l`, **not** a `use`-loaded module, so it can't drop its namespace. Wrap the file in `\d .<proctype>` … `\d .`, as `feed.q` and `loader.q` do:
 
 ```q
 / <proctype>: <purpose>
 
-.myfeed.init:{[config;deps]
+\d .myfeed
+
+init:{[config;deps]
   / store deps and config; connect; schedule
-  .myfeed.log:deps`log;
-  .myfeed.cfg:config;
-  .myfeed.period:$[`period in key config;config`period;1];
-  .myfeed.svc:deps`servers;
-  (.myfeed.svc`startup)[config];
-  if[not (.myfeed.svc`waitfortype)[`tickerplant;30000;500];
+  logdep::deps`log;
+  period::$[`period in key config;config`period;1];
+  svc::deps`servers;
+  (svc`startup)[config];
+  if[not (svc`waitfortype)[`tickerplant;30000;500];
     '"myfeed: no tickerplant after 30s"];
-  .myfeed.h:(.myfeed.svc`gethandlebytype)[`tickerplant;`any];
-  (deps[`timer]`addjob)[`myfeedpub;`.myfeed.publish;();.myfeed.period;1h;()!()];
-  .myfeed.log[`info][`myfeed;"initialised"];
+  h::(svc`gethandlebytype)[`tickerplant;`any];
+  (deps[`timer]`addjob)[`myfeedpub;`.myfeed.publish;();period;1h;()!()];
+  logdep[`info][`myfeed;"initialised"];
   };
 
-.myfeed.publish:{[]
+publish:{[]
   / publish one batch; the tickerplant stamps time
-  .myfeed.h(".u.upd";`trade;.myfeed.batch[]);
+  h(".u.upd";`trade;batch[]);
   };
+
+\d .
 ```
 
-(The existing `feed.q` and `loader.q` wrap their code in `\d .feed` / `\d .loader`. That works too, but the full-name form avoids the bare-name-resolves-to-root trap.)
+- **Assigning a global** inside these functions needs `::` (`h::…` sets `.myfeed.h`). A single `:` makes a local.
+- **Root tables:** bare names inside the block resolve in `.myfeed` only, with no fallback to root. Read a root table with `` get`..trade ``.
+- **Names passed as symbols** (timer jobs, API symbols, anything run from outside the block) use the full name: `` `.myfeed.publish ``.
+- **Reserved words** such as `log` can't be used as variable names, so the example uses `logdep`.
 
 **Dependency contracts:**
 - `log`: `` `info`warn`error ``, each `{[ctx;msg]}`.
