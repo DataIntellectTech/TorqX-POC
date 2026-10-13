@@ -1,8 +1,10 @@
 # sctp1: chained off stp1; rdb1 replays stp1's logs
-"sctp.chainedtp" = true
-"sctp.loggingmode" = "parent"
-"sctp.tickerplantname" = "stp1"
-"sctp.subscribeto" = ""     # all tables
-"sctp.subscribesyms" = ""   # all syms
-"sctp.replay" = false
-"sctp.schema" = true
+"sctp_chainedtp" = true
+"sctp_loggingmode" = "parent"
+"sctp_tickerplantname" = "stp1"
+"sctp_subscribeto" = ""     # all tables
+"sctp_subscribesyms" = ""   # all syms
+"sctp_replay" = false
+"sctp_schema" = true
+createlogs = false                 # logging is set by sctp_loggingmode
+connections = ["segmentedtp"]

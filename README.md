@@ -597,11 +597,11 @@ subscriber misses what its tickerplant took while it was away; restart it to reb
 ## 13. Replaying tickerplant logs
 
 `tickerlogreplay1` rebuilds a day from stp1's logs into `hdbreplay/`, then exits. Pick the run on the command
-line, as in TorQ: any `replay.<key>` in `tickerlogreplay1.toml` can be given as `-replay.<key>`:
+line, as in TorQ: any `replay_<key>` in `tickerlogreplay1.toml` can be given as `-replay_<key>`:
 
 ```bash
-torqx.sh start tickerlogreplay1 -replay.tplogdir tplog/stp1_<date>                   # into hdbreplay/
-torqx.sh start tickerlogreplay1 -replay.tplogdir tplog/stp1_<date> -replay.hdbdir hdb # into the live hdb
+torqx.sh start tickerlogreplay1 -replay_tplogdir tplog/stp1_<date>                   # into hdbreplay/
+torqx.sh start tickerlogreplay1 -replay_tplogdir tplog/stp1_<date> -replay_hdbdir hdb # into the live hdb
 ```
 
 Replaying into the live hdb replaces that date's partition (`clean`); reload the hdb afterwards.
