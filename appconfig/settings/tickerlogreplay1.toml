@@ -1,28 +1,27 @@
 # tickerlogreplay1: replays stp1's logs into hdbreplay. Pick the run on the command line, e.g.
-#   torqx.sh start tickerlogreplay1 -.replay.tplogdir tplog/stp1_2026.10.05 -.replay.hdbdir hdb
-# replaces the builtin replay section, so every key is set (each is then overridable as -.replay.<key>)
-[replay]
-schemafile = "database.q"
-hdbdir = "hdbreplay"
-tplogdir = ""
-tplogfile = ""                         # a single log file instead of tplogdir
-segmentedmode = true                   # tplogdir is a segmented tickerplant log directory
-tablelist = "all"
-firstmessage = 0
-lastmessage = 9223372036854775807      # 0W
-messagechunks = 9223372036854775807    # 0W
-partitiontype = "date"
-clean = true
-emptytables = true
-sortafterreplay = true
-sortcsv = ""
-basicmode = false
-checklogfiles = false
-gc = true
-autoreplay = true
-exitwhencomplete = true
-partandmerge = false
-tempdir = "tempmergedir"
-mergemethod = "part"
-mergenumrows = 10000000
-mergenumbytes = 500000000
+#   torqx.sh start tickerlogreplay1 -replay.tplogdir tplog/stp1_2026.10.05 -replay.hdbdir hdb
+# every key is set; each is overridable as -replay.<key>
+"replay.schemafile" = "database.q"
+"replay.hdbdir" = "hdbreplay"
+"replay.tplogdir" = ""
+"replay.tplogfile" = ""                         # a single log file instead of tplogdir
+"replay.segmentedmode" = true                   # tplogdir is a segmented tickerplant log directory
+"replay.tablelist" = "all"
+"replay.firstmessage" = 0
+"replay.lastmessage" = 9223372036854775807      # 0W
+"replay.messagechunks" = 9223372036854775807    # 0W
+"replay.partitiontype" = "date"
+"replay.clean" = true
+"replay.emptytables" = true
+"replay.sortafterreplay" = true
+"replay.sortcsv" = ""
+"replay.basicmode" = false
+"replay.checklogfiles" = false
+"replay.gc" = true
+"replay.autoreplay" = true
+"replay.exitwhencomplete" = true
+"replay.partandmerge" = false
+"replay.tempdir" = "tempmergedir"
+"replay.mergemethod" = "part"
+"replay.mergenumrows" = 10000000
+"replay.mergenumbytes" = 500000000
