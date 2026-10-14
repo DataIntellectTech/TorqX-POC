@@ -2,3 +2,12 @@ tickerplanttypes = "tickerplant"
 numrows = 500
 settimer = 5
 reloadorder = "hdb rdb idb"
+
+# Per-table flush thresholds. REQUIRED here: di.torq.proc.wdb 0.3.0 defaults numtab to
+# quote`trade!10000 50000, and maxrows prefers numtab over numrows, so without this the
+# numrows above is dead for exactly the two tables this demo feeds (0.2.0 defaulted numtab
+# to an empty dict, so numrows applied to everything). At the feed's rate trade would need
+# ~85 minutes to reach 50000 and nothing would be written intraday.
+[numtab]
+trade = 500
+quote = 500
