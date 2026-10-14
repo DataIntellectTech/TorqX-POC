@@ -177,7 +177,7 @@ These are minimum `X.Y.Z` versions, checked against each module's `VERSION` file
 
 - **Discovery:** add a `discovery` row and start it first. Set `discoveryregister = true` and `connectionsfromdiscovery = true` in the app `default.toml`.
 - **Chained TP:** set `tickerplanttypes = "chainedtp"` in the subscriber's settings; the chainedtp settings take `pubinterval` (whole seconds), `createlogfile` and `logdir`. A chained TP exits if it loses its upstream TP.
-- **Client tracking:** always on (`.clients.clients`, `[clients]` section). `[zpsignore]` defaults to ignoring `upd` / `.u.upd`.
+- **Client tracking:** always on (`.clients.clients`, flat `clients_*` settings such as `clients_opencloseonly`). `[zpsignore]` defaults to ignoring `upd` / `.u.upd`.
 
 ## Gotchas
 
