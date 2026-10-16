@@ -6,6 +6,9 @@ logs/
 # Tickerplant logs
 tplog/
 
+# tickerlogreplay output
+hdbreplay/
+
 # WDB working-partition data (written intraday, moved to the hdb at EOD)
 wdb/
 

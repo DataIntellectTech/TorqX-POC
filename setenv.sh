@@ -29,6 +29,8 @@ export TORQXDATAHOME="$dirpath"
 # write its logs ("Permission denied" on a file the first user owns). Suffixing the user keeps
 # each stack independent on a shared box while staying a single committed default.
 export TORQXSTACKID="torqx-poc-${USER}"
+# segmentedtp log root (stp1 logs under $KDBTPLOG/stp1_<date>)
+export KDBTPLOG="$TORQXDATAHOME/tplog"
 # QPATH resolves di.* modules (colon-separated, first match wins). Everything the app needs is in
 # TORQXHOME; $HOME/.kx/mod supplies the KX-shipped modules (kx.log).
 export QPATH="$TORQXHOME:$HOME/.kx/mod"

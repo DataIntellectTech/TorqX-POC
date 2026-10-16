@@ -4,7 +4,9 @@
 discoveryregister = true
 connectionsfromdiscovery = true
 
-# demo pace: retry dead connections and discovery every 10s (discovery1 keeps 0D from its builtin settings)
+autoreconnect = true   # resubscribe after a tickerplant restart
+
+# demo pace: retry dead connections (and so resubscribe) and discovery every 10s (discovery1 keeps 0D from its builtin settings)
 retry = "0D00:00:10"
 discoveryretry = "0D00:00:10"
 

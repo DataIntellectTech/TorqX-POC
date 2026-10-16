@@ -1,0 +1,27 @@
+# tickerlogreplay1: replays stp1's logs into hdbreplay. Pick the run on the command line, e.g.
+#   torqx.sh start tickerlogreplay1 -tplogdir tplog/stp1_2026.10.05 -hdbdir hdb
+# every key is set; each is overridable as -<key>
+schemafile = "database.q"
+hdbdir = "hdbreplay"
+tplogdir = ""
+tplogfile = ""                         # a single log file instead of tplogdir
+segmentedmode = true                   # tplogdir is a segmented tickerplant log directory
+tablelist = "all"
+firstmessage = 0
+lastmessage = 9223372036854775807      # 0W
+messagechunks = 9223372036854775807    # 0W
+partitiontype = "date"
+clean = true
+emptytables = true
+sortafterreplay = true
+sortcsv = ""
+basicmode = false
+checklogfiles = false
+gc = true
+autoreplay = true
+exitwhencomplete = true
+partandmerge = false
+tempdir = "tempmergedir"
+mergemethod = "part"
+mergenumrows = 10000000
+mergenumbytes = 500000000

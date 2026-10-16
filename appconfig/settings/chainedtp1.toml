@@ -1,4 +1,13 @@
-# chainedtp1 logs what it receives so rdb1 can replay it on connect
+# chainedtp1: chained off tickerplant1; logs what it receives so rdb1 can replay it on connect
+tickerplantname = "tickerplant1"
+pubinterval = "0D00:00:01"   # batching interval; "0D00:00:00" publishes immediately
+tpconnsleep = 10             # seconds between attempts to connect to tickerplant1
+tpcheckcycles = 9223372036854775807   # 0W: wait for tickerplant1 indefinitely
 createlogfile = true
 logdir = "tplog"             # relative to TORQXAPPHOME, where torqx.sh starts processes
-pubinterval = "0D00:00:01"   # batching interval; "0D00:00:00" publishes immediately
+clearlogonsubscription = false
+subscribeto = ""             # all tables
+subscribesyms = ""           # all syms
+replay = false
+schema = true
+connections = ["tickerplant"]
