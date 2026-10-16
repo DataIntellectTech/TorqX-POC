@@ -1,0 +1,17 @@
+/ rdb1 settings - the same as rdb1.toml; keep one. If both are present, .toml wins on any key both set.
+/ Subscribes to the tickerplant, replays the day's log on startup, and accumulates live trade/quote in
+/ memory. This deployment runs ALONGSIDE a wdb (wdb1), so reloadenabled is true: the wdb owns the EOD
+/ writedown, and the rdb keeps the prior day live until the wdb calls reload[date] (dropping exactly
+/ the prior day). Schema comes from the tickerplant (via subdetails), not a local database.q.
+/ See kdbx-modules/di/torq/proc/rdb.
+
+tickerplanttypes:`segmentedchainedtp   / classic: `chainedtp
+hdbtypes:`hdb                   / proctype(s) to reload at EOD (the wdb triggers the actual reload)
+hdbdir:`hdb                     / HDB root (relative to TORQXAPPHOME)
+replaylog:1b                    / replay the tp log on startup to recover intraday state
+tpwaittimeout:30000             / ms to block waiting for the tickerplant at startup
+/ wdb-fronted: defer the writedown to the wdb; drop the prior day on the wdb's reload[] call
+/ (set 0b for a standalone rdb)
+reloadenabled:1b
+/ subscribeto / subscribesyms omitted -> all tables, all syms
+/ ignorelist omitted -> `heartbeat`logmsg

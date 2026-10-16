@@ -149,7 +149,7 @@ init:{[config;deps]
   (svc`startup)[config];
   timeout:$[`waittimeout in key config;"j"$config`waittimeout;30000];
   / the tickerplant proctype is the first in connections (any others are ignored)
-  tpt::`$first config`connections;
+  tpt::first assyms config`connections;
   if[not (svc`waitfortype)[tpt;timeout;500];
     '"feed: no ",(string tpt)," connection within ",(string timeout),"ms - cannot start feed"];
   h::(svc`gethandlebytype)[tpt;`any];
