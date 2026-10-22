@@ -157,7 +157,7 @@ init:{[config;deps]
   / schedule the publish tick (di.timer divergence from FSP's .timer.repeat @ 200ms;
   / di.timer mode-1h period is whole seconds)
   period:$[`publishperiod in key config;"j"$config`publishperiod;1];
-  (deps[`timer]`addjob)[`feedpublish;`.feed.feed;();period;1h;()!()];
+  (deps[`timer]`addjob)[`feedpublish;`.feed.feed;();0D00:00:01*period;1h;()!()];
 
   logdep[`info][`feed;"feed initialised (FSP port): ",(string cnt)," syms, maxn=",(string maxn),", qpt=",(string qpt),", publishing every ",(string period),"s"];
   }

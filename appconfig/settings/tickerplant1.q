@@ -2,5 +2,5 @@
 / Schema comes from the app's database.q (di.torq.proc.tickerplant's default schemafile). eodtime
 / rolls at GMT midnight by default (rolltimezone / datatimezone / rolltimeoffset omitted).
 
-publishmode:`immediate          / or `batched (buffer per table, flush every pubperiod seconds)
+/ publishing is immediate unless q is started with -t <ms>, which batches and flushes every -t ms
 tplogdir:`tplog                 / relative to TORQXAPPHOME; a per-date log tp<date> is kept here
