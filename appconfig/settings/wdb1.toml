@@ -17,7 +17,7 @@ reloadorder = "hdb rdb idb"        # reload the hdb first (new partition), then 
 # immediate omitted -> false (only flush tables over numrows)
 # subscribeto / subscribesyms omitted -> all tables, all syms
 # ignorelist omitted -> `heartbeat`logmsg
-# sortcsv omitted -> di.dbwrite default (sort by time ascending, no attributes)
+# sortcsv omitted -> appconfig/sort.csv if present, else di.dbwrite default (sort by sym then time, p# on sym)
 
 # Per-table flush thresholds. REQUIRED here: di.torq.proc.wdb 0.3.0 defaults numtab to
 # quote`trade!10000 50000, and maxrows prefers numtab over numrows, so without this the
