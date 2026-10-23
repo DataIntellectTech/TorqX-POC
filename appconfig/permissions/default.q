@@ -55,3 +55,18 @@ pm[`grantaccess][`quote;`readers;`read];
 pm[`adduser][`trader;`local;`md5;md5"traderpass"];
 pm[`assignrole][`trader;`reader];
 pm[`addtogroup][`trader;`readers];
+
+/ --- a user with WRITE on one table only ------------------------------------------------------
+/ connect as: h:hopen`:localhost:5304:writer:writerpass
+/ `select` is granted as a FUNCTION because query[] gates every free-form query on it, including
+/ update and delete; the read/write split then comes from the access table per table.
+pm[`addrole][`writer;"may read and write trade, read quote"];
+pm[`grantfunction][`select;`writer;{1b}];
+pm[`addgroup][`writers;"write access to trade only"];
+pm[`grantaccess][`trade;`writers;`read];
+pm[`grantaccess][`trade;`writers;`write];
+pm[`grantaccess][`quote;`writers;`read];
+
+pm[`adduser][`writer;`local;`md5;md5"writerpass"];
+pm[`assignrole][`writer;`writer];
+pm[`addtogroup][`writer;`writers];
