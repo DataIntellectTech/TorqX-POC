@@ -1,11 +1,13 @@
 / app permission rules for the TorqX-POC demo stack, loaded into every process after the
 / framework tier (kdbx-modules/di/torq/permissions/default.q) when [permissions] enabled=true.
 / -
-/ Two kinds of user:
+/ Three users, plus the null user the framework tier declares:
 /   torqx  - the identity every process connects AS. di.torq.servers reads it from
 /            appconfig/passwords/default.txt and appends it to each outbound connection, so
 /            without this user the stack cannot talk to itself.
 /   trader - a human user, read-only on trade and quote, to demonstrate the gateway path.
+/   writer - a human user with write on trade but not quote, so the read/write split in the
+/            access table is visible on a user who is not a superuser.
 
 pm:use`di.permissions;
 
