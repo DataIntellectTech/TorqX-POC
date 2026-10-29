@@ -20,6 +20,8 @@ capture + query stack, rebuilt from standalone `di.*` modules via dependency inj
 9. Discovery (`discovery1`)
 10. Chained tickerplant (`chainedtp1`)
 11. Client tracking
+12. Tickerplant type: segmented or classic
+13. Replaying tickerplant logs
 
 ---
 
@@ -86,6 +88,8 @@ torqx.sh status
 #> feed1           feed       up    pid=...
 #> rdb1            rdb        up    pid=...
 #> wdb1            wdb        up    pid=...
+#> idb1            idb        up    pid=...
+#> housekeeping1   housekeeping up    pid=...
 #> gateway1        gateway    up    pid=...
 #> loader1         loader     down            # one-shot loader; exits after its run hook
 #> tickerlogreplay1 tickerlogreplay down       # run on demand (§13)
@@ -95,11 +99,11 @@ torqx.sh status
 aborted stays up. `torqx_init.q` sets `result` only once init completes, so ask each process for it:
 
 ```bash
-for p in 5307 5300 5301 5302 5303 5304 5305 5306 5309 5310; do
+for p in 5307 5311 5312 5302 5303 5304 5305 5306 5309 5310; do
   q -q <<<"h:hopen\`::$p; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
 done
 #> 5307 discovery1
-#> 5300 tickerplant1  ...
+#> 5311 stp1  ...
 ```
 
 A backend that comes up after the gateway (a restarted rdb, say) is not routed to until the
@@ -178,7 +182,7 @@ finds everything where they expect it.
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
 | Tickerplant | segmented (STP) | segmented (`stp1`, chained `sctp1`); classic TP by config (§12) |
-| Not yet built | monitor, DQC/DQE, sort-worker, kill | — (deferred per plan) |
+| Not yet built | monitor, reporter, filealerter, metrics, DQC/DQE, sort/sort-worker, kill | — (deferred per plan) |
 
 The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (the FSP's example
 `countbysym`/`hloc`) is auto-loaded into the rdb at startup, at root, exactly as TorQ's
@@ -192,9 +196,9 @@ The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (
 redirected to `$TORQXLOGDIR` (default `/tmp`):
 
 ```bash
-ls /tmp/torqx_torqx-poc_*.log
-#> /tmp/torqx_torqx-poc_tickerplant1.log  ...  _rdb1.log  _gateway1.log
-tail -5 /tmp/torqx_torqx-poc_gateway1.log
+ls /tmp/torqx_${TORQXSTACKID}_*.log
+#> /tmp/torqx_torqx-poc-<user>_discovery1.log  ...  _rdb1.log  _gateway1.log
+tail -5 /tmp/torqx_${TORQXSTACKID}_gateway1.log
 ```
 
 **Log rolling (`di.torq.logroll`).** An opt-in module (a design delta from the plan, which folded
@@ -203,6 +207,8 @@ absent/disabled is a silent no-op. Here the **hdb** opts in:
 
 ```bash
 cat appconfig/settings/hdb.toml
+#> connections = []
+#>
 #> [logroll]
 #> enabled = true
 #> dir = "logs"
@@ -249,13 +255,17 @@ identity, run the config cascade, build the DI deps, and start the process modul
 a live `q)` console for that process:
 
 ```bash
-torqx -proctype hdb -procname hdb -p 5599     # explicit identity, spare port (throwaway)
-#> ... INFO hdb mounting hdb from ...
+torqx -proctype hdb -procname hdbtmp -p 5599  # explicit identity, spare port (throwaway)
 #> ... WARN logroll interactive session (stdin is a TTY) - NOT redirecting the console ...
-#> torqx: started hdb hdb                       # <- torqx_init.q's confirmation line
+#> ... INFO hdb mounting hdb from ...
+#> torqx: started hdb hdbtmp                      # <- torqx_init.q's confirmation line
 #> q)                                           # <- live console prompt; try:  tables[]
 # type  \\  (then Enter) to quit this throwaway instance
 ```
+
+The throwaway registers with discovery like any hdb, so the gateway adds it as an hdb backend, and
+after you quit it the gateway retries it every 10s until discovery1 restarts (§9). Give it its
+own procname (`hdbtmp`), never a live one.
 
 > **Note (ties to §3).** The hdb has `[logroll] enabled=true`. When **backgrounded** (`torqx.sh
 > start`, §3) `di.torq.logroll` redirects the console to `logs/` — correct for a daemon. When run
@@ -280,9 +290,10 @@ process) instead of background+logfile. Use the `--tmux` flag or the `devstart`/
 aliases. One session per process, named `<stackid>-<proc>`:
 
 ```bash
+torqx.sh stop gateway1                # devstart refuses a process that is already running
 torqx.sh devstart gateway1            # == torqx.sh start gateway1 --tmux
-#> starting gateway1 (gateway) in tmux session 'torqx-poc-gateway1'...
-#>   attach with: torqx.sh attach gateway1   (or: tmux attach -t torqx-poc-gateway1)
+#> starting gateway1 (gateway) in tmux session 'torqx-poc-<user>-gateway1'...
+#>   attach with: torqx.sh attach gateway1   (or: tmux attach -t torqx-poc-<user>-gateway1)
 
 torqx.sh status
 #> gateway1        gateway    up    pid=... (tmux)     # <- tagged only when the RUNNING pid is the tmux one
@@ -302,7 +313,7 @@ torqx.sh devstop gateway1
 torqx.sh start gateway1               # back to normal background mode for the rest of the demo
 ```
 
-Sessions are intuitively named, so you can also bypass torqx.sh: `tmux attach -t torqx-poc-rdb1`.
+Sessions are intuitively named, so you can also bypass torqx.sh: `tmux attach -t ${TORQXSTACKID}-rdb1`.
 
 ---
 
@@ -314,15 +325,15 @@ plain file under `code/processes/<proctype>.q`, loaded by di.torq via the **same
 machinery), adapted to that contract.
 
 ```bash
-sed -n '103,158p' code/processes/feed.q
+sed -n '107,163p' code/processes/feed.q
 ```
 
 **Requirements for a di.torq custom process** (point these out in the file):
 
-- **Everything under `\d .<proctype>`** — here `\d .feed` (line 26). Publishing at a real root
+- **Everything under `\d .<proctype>`** — here `\d .feed` (line 28). Publishing at a real root
   namespace, not a `use`-mangled one.
-- **Required: `.<proctype>.init[config;deps]`** (line 109) — the entry point di.torq calls. `config`
-  is the merged settings dict (from `feed1.toml`); `deps` is the DI dict (`log`/`timer`/`handlers`).
+- **Required: `.<proctype>.init[config;deps]`** (line 113) — the entry point di.torq calls. `config`
+  is the merged settings dict (from `feed1.toml`); `deps` is the DI dict (`log`/`timer`/`handlers`/`servers`).
 - **Optional: `.<proctype>.run[]`** — a post-init one-shot hook di.torq calls if present (skippable
   with `-norun`). `feed.q` has **no** run hook (it schedules its own timer job in `init`);
   `loader.q` *does* define one (`run:{[] loadall[]; exit 0}`), which is how the loader fires its
@@ -333,16 +344,15 @@ sed -n '103,158p' code/processes/feed.q
 **Where it interfaces with TorqX** (the di.torq-forced divergences from the FSP original, all
 commented in the file):
 
-- **Injected log**: `logdep::deps\`log; logdep[\`info][\`feed;"..."]` (lines 110, 155) — not `.lg.o`.
-- **Injected timer**: `(deps[\`timer]\`addjob)[\`feedpublish;\`.feed.feed;();period;1h;()!()]` (line
-  153) — not `.timer.repeat`.
-- **Connections via `di.torq.servers`** (lines 142–148): `svc:use\`di.torq.servers; (svc\`init)[config;deps];
-  (svc\`startup)[config];` then **`(svc\`waitfortype)[\`tickerplant;timeout;500]`** (block until the
-  TP is up — the modular equivalent of `.servers.startupdepcycles`) and
-  `(svc\`gethandlebytype)[\`tickerplant;\`any]`.
+- **Injected log**: `logdep::deps\`log; logdep[\`info][\`feed;"..."]` (lines 114, 162) — not `.lg.o`.
+- **Injected timer**: `(deps[\`timer]\`addjob)[\`feedpublish;\`.feed.feed;();0D00:00:01*period;1h;()!()]`
+  (line 160) — not `.timer.repeat`.
+- **Connections via the injected `di.torq.servers`** (lines 148–155): `svc::deps\`servers; (svc\`startup)[config];`
+  then **`(svc\`waitfortype)[tpt;timeout;500]`** (block until the TP is up — the modular equivalent of
+  `.servers.startupdepcycles`) and `(svc\`gethandlebytype)[tpt;\`any]`, where `tpt` is the first of `connections`.
 - **Config-driven**: the FSP's hard-coded literals (`syms`/`prices`/`mode`/`cond`/... and
-  `len`/`maxn`/`qpt`) are read from `feed1.toml` (lines 113–123), keeping the ported code generic.
-- **Symbol normalisation**: `assyms:{[x] $[11h=abs type x;x;\`$x]}` (line 107) — TOML gives strings,
+  `len`/`maxn`/`qpt`) are read from `feed1.toml` (lines 117–127), keeping the ported code generic.
+- **Symbol normalisation**: `assyms:{[x] $[11h=abs type x;x;\`$x]}` (line 111) — TOML gives strings,
   `.q` settings give symbols; normalise at point of use so either format works.
 
 ---
@@ -367,14 +377,14 @@ cadence; the feed logs it at startup:
 ```bash
 grep publishperiod appconfig/settings/feed1.toml
 #> publishperiod = 1
-grep "publishing every" /tmp/torqx_torqx-poc_feed1.log | tail -1
+grep "publishing every" /tmp/torqx_${TORQXSTACKID}_feed1.log | tail -1
 #>   ... INFO feed feed initialised (FSP port): 10 syms, maxn=15, qpt=5, publishing every 1s
 
 # change it, restart just the feed, observe the new value flow through the cascade:
 sed -i 's/publishperiod = 1/publishperiod = 2/' appconfig/settings/feed1.toml
 torqx.sh restart feed1
 sleep 2
-grep "publishing every" /tmp/torqx_torqx-poc_feed1.log | tail -1
+grep "publishing every" /tmp/torqx_${TORQXSTACKID}_feed1.log | tail -1
 #>   ... INFO feed feed initialised (FSP port): ... publishing every 2s
 # (revert:  sed -i 's/publishperiod = 2/publishperiod = 1/' appconfig/settings/feed1.toml)
 ```
@@ -413,11 +423,11 @@ executable, same reasoning as §7.)
 
 ```bash
 cat $TORQXHOME/di/torq/proc/rdb/VERSION $TORQXHOME/di/torq/proc/gateway/VERSION
-#> 0.3.0
+#> 0.4.0
 #> 0.2.0
-sed -n '5,22p' deps.toml
+sed -n '5,33p' deps.toml
 #> [dependencies]
-#> "di.torq" = "0.4.0"   "di.torq.proc.rdb" = "0.3.0"   "di.torq.proc.gateway" = "0.2.0"   ...
+#> "di.torq" = "0.5.0"   "di.torq.proc.rdb" = "0.4.0"   "di.torq.proc.gateway" = "0.2.0"   ...
 ```
 
 `di.torq.depcheck` runs at the very start of `di.torq.init` (before identity, config, or any module
@@ -426,21 +436,22 @@ collecting **all** failures before reporting. Demonstrate an unsatisfiable depen
 
 ```bash
 # bump a dep to a version that doesn't exist yet:
-sed -i 's/"di.torq.proc.rdb" = "0.3.0"/"di.torq.proc.rdb" = "0.4.0"/' deps.toml
+sed -i 's/"di.torq.proc.rdb" = "0.4.0"/"di.torq.proc.rdb" = "0.5.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        down            # <- refused to start
-tail -4 /tmp/torqx_torqx-poc_rdb1.log
-#> 'DEPENDENCY CHECK FAILED:
-#>   di.torq.proc.rdb requires minimum version 0.4.0, found 0.3.0
-#>   [1]  \l .../kdbx-modules/di/torq/bin/torqx_init.q
+tail -4 /tmp/torqx_${TORQXSTACKID}_rdb1.log
+#> torqx: init failed: DEPENDENCY CHECK FAILED (peer version requirements):
+#>   di.torq.proc.rdb requires minimum version 0.5.0, found 0.4.0
 
 # revert and it starts clean again:
-sed -i 's/"di.torq.proc.rdb" = "0.4.0"/"di.torq.proc.rdb" = "0.3.0"/' deps.toml
+sed -i 's/"di.torq.proc.rdb" = "0.5.0"/"di.torq.proc.rdb" = "0.4.0"/' deps.toml
 torqx.sh restart rdb1
 torqx.sh status rdb1
 #> rdb1            rdb        up    pid=...
 ```
+
+The restarted rdb1 comes up after the gateway, so refresh the gateway's backends (§1) before querying it.
 
 (A missing module reports `... requires minimum version X, not found`; a missing `deps.toml`
 altogether is a silent no-op — the whole feature is opt-in.)
@@ -467,14 +478,16 @@ show h"select procname,proctype,hpup,w from .servers.SERVERS";
 EOF
 #> procname      proctype     hpup                    w
 #> discovery1    discovery    :homer...:5307
-#> tickerplant1  tickerplant  :homer...:5300          # <- listed from process.csv, no handle
+#> tickerplant1  tickerplant  :homer...:5300          # <- listed from process.csv, no handle (not started)
+#> stp1          segmentedtp  :homer...:5311          # <- listed from process.csv, no handle
 #> housekeeping1 housekeeping :homer...:5310          # <- likewise
+#> sctp1         segmentedchainedtp :homer...:5312 6
 #> hdb           hdb          :homer...:5302          6
 #> loader1       loader       :homer...:0             # <- one-shot; registered, then exited
 #> feed1  rdb1  wdb1  gateway1  idb1 ...                 # <- each registered itself, live handle
 ```
 
-The tickerplant and housekeeping never register themselves (neither calls `servers.startup`, as
+The tickerplants (stp1 here) and housekeeping never register themselves (none calls `servers.startup`, as
 in TorQ); they are listed from discovery's own `process.csv` sweep, with a live handle only if they
 were already up when discovery started. That is enough for peers: discovery hands out every row
 whether or not it holds a handle, and the peer dials it itself.
@@ -510,9 +523,9 @@ TorQ's `0D` (no retries) from its builtin settings.
 
 ## 10. Chained tickerplant (`chainedtp1`)
 
-`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. Here rdb1 takes its data
-through it and wdb1 straight from the tickerplant, so the two paths sit side by side (classic
-mode, §12):
+`di.torq.proc.chainedtp` is TorQ's chained tickerplant as a kdb-x module. It runs in classic mode, so
+switch to it first (§12), then start tickerplant1 and chainedtp1 before rdb1, wdb1 and feed1. rdb1 then
+takes its data through chainedtp1 and wdb1 straight from the tickerplant, so the two paths sit side by side:
 
 ```
 feed1 → tickerplant1 → chainedtp1 → rdb1
@@ -528,8 +541,9 @@ receives to `tplog/chainedtp1_<date>`, next to tickerplant1's `tplog/tp<date>`. 
 when it connects:
 
 ```bash
-grep replayed /tmp/torqx_${TORQXSTACKID}_rdb1.log
-#> ... [rdb] subscribed; replayed 215 message(s), partition date 2026.09.29
+grep "replaying log file\|rdb\] subscribed" /tmp/torqx_${TORQXSTACKID}_rdb1.log
+#> ... [subscribe] replaying log file (0;`:tplog/chainedtp1_2026.10.29)
+#> ... [rdb] subscribed, partition date 2026.10.29
 ```
 
 **Counts at each hop.** With the feed stopped (`torqx.sh stop feed1`) the counts settle and agree:
