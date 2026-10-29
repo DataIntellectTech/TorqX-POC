@@ -1,0 +1,4 @@
+table,minage,column,calgo,cblocksize,clevel
+trade,0,sym,2,17,5
+trade,0,price,2,17,5
+quote,0,sym,2,17,5
