@@ -8,3 +8,7 @@
 backendtypes:`rdb`hdb`idb       / proctype(s) to connect to and route queries across
 / synccallsallowed omitted -> 0b (deferred-sync / async only)
 / errorprefix omitted -> "error: "
+
+/ check a client's query before dispatching it, and run it on each backend as that client
+/ rather than as the gateway - so the data processes remain the enforcement point
+permissioned:1b
