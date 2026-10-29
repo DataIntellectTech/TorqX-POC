@@ -1,6 +1,6 @@
-action,path,match,exclude,age,unit,dirs
-rm,{TORQXAPPHOME}/logs/,err_*.log,,10,d,0
-rm,{TORQXAPPHOME}/logs/,out_*.log,,10,d,0
-gzip,{TORQXAPPHOME}/tplog/,tp*,*.gz,1,d,0
-gzip,{TORQXAPPHOME}/tplog/,chainedtp1_*,*.gz,1,d,0
-tar,{TORQXAPPHOME}/tplog/,stp1_*,,1,d,1
+function,path,match,exclude,age,agemin,checkfordirectory
+rm,{TORQXAPPHOME}/logs/,err_*.log,,10,0,0
+rm,{TORQXAPPHOME}/logs/,out_*.log,,10,0,0
+zip,{TORQXAPPHOME}/tplog/,tp*,*.gz,1,0,0
+zip,{TORQXAPPHOME}/tplog/,chainedtp1_*,*.gz,1,0,0
+tardir,{TORQXAPPHOME}/tplog/,stp1_*,,1,0,1

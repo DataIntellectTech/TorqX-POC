@@ -149,7 +149,7 @@ init:{[config;deps]
   (svc`startup)[config];
   timeout:$[`waittimeout in key config;"j"$config`waittimeout;30000];
   / the tickerplant proctype is the first in connections (any others are ignored)
-  tpt::`$first config`connections;
+  tpt::first assyms config`connections;
   if[not (svc`waitfortype)[tpt;timeout;500];
     '"feed: no ",(string tpt)," connection within ",(string timeout),"ms - cannot start feed"];
   h::(svc`gethandlebytype)[tpt;`any];
@@ -157,7 +157,7 @@ init:{[config;deps]
   / schedule the publish tick (di.timer divergence from FSP's .timer.repeat @ 200ms;
   / di.timer mode-1h period is whole seconds)
   period:$[`publishperiod in key config;"j"$config`publishperiod;1];
-  (deps[`timer]`addjob)[`feedpublish;`.feed.feed;();period;1h;()!()];
+  (deps[`timer]`addjob)[`feedpublish;`.feed.feed;();0D00:00:01*period;1h;()!()];
 
   logdep[`info][`feed;"feed initialised (FSP port): ",(string cnt)," syms, maxn=",(string maxn),", qpt=",(string qpt),", publishing every ",(string period),"s"];
   }

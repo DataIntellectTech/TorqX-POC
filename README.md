@@ -154,9 +154,10 @@ TorqX-POC/
 ├── appconfig/
 │   ├── process.csv               # process registry (FSP: appconfig/process.csv)
 │   └── settings/                 # per-process config  (FSP: appconfig/settings/)
-│       ├── default.toml          #   app-wide defaults      (FSP: default.q)
-│       ├── tickerplant1.toml     #   per-process settings   (FSP: tickerplant.q, rdb.q, ...)
-│       ├── rdb1.toml  wdb1.toml  gateway1.toml  feed1.toml  hdb.toml  ...
+│       ├── default.toml  default.q            #   app-wide defaults      (FSP: default.q)
+│       ├── tickerplant1.toml  tickerplant1.q  #   per-process settings   (FSP: tickerplant.q, rdb.q, ...)
+│       ├── rdb1.toml  rdb1.q  wdb1.toml  wdb1.q  gateway1.toml  gateway1.q  ...
+│       │                                      #   each .toml has a .q twin - keep one (§7)
 └── code/
     └── processes/
         ├── feed.q                # custom process  (FSP: code/tick/feed.q)
@@ -173,7 +174,7 @@ finds everything where they expect it.
 | Aspect | FSP | TorqX-POC |
 |---|---|---|
 | Framework code | copied into the project (`code/`) | **zero-copy** — points at installed `kdbx-modules/` via `TORQXHOME` |
-| Settings format | `.q` (executable) | **`.toml`** (inert data) — `.q` still supported (§7) |
+| Settings format | `.q` (executable) | **`.toml`** (inert data) or `.q` — both shipped, keep one (§7) |
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
 | Tickerplant | segmented (STP) | segmented (`stp1`, chained `sctp1`); classic TP by config (§12) |
@@ -358,8 +359,7 @@ and TOML's grammar is far more tractable to hand-build correctly.) `.q` remains 
 
 **The cascade.** `di.torq.config` merges, later tiers overriding earlier:
 `builtin/default → builtin/<proctype> → app/default → app/<proctype> → app/<procname>` — and for
-each tier it tries **`.q` first, then `.toml`** (so the two can coexist mid-migration; `.toml` wins
-a clash).
+each tier it reads **`<name>.q`, then `<name>.toml`**, merging the two; `.toml` wins any key both set.
 
 **Live: add a setting, restart, see it take effect.** `feed1.toml` drives the feed's publish
 cadence; the feed logs it at startup:
@@ -379,25 +379,28 @@ grep "publishing every" /tmp/torqx_torqx-poc_feed1.log | tail -1
 # (revert:  sed -i 's/publishperiod = 2/publishperiod = 1/' appconfig/settings/feed1.toml)
 ```
 
-**Legacy `.q` still works.** A pre-prepared `.q` equivalent of `rdb1.toml` is in
-`docs/legacy-config-example.q` (with the TOML shown in a comment block). Parse both and compare:
+**Pick a format: every settings file ships as a `.toml` and a `.q`.** Each `appconfig/settings/<name>.toml`
+has an equivalent `<name>.q` beside it. Keep whichever format you prefer and delete the other. While
+both are present, `.toml` wins any key both set, so an edit to the `.q` has no effect until its
+`.toml` is gone. A `.q` settings file is flat `name:value` lines, one per setting, with `/` comments;
+values are ordinary q (symbols, timespans, dicts). Parse a pair and compare:
 
 ```bash
 q -q <<'EOF'
 cfg:use`di.torq.config;
--1 "--- .q settings (symbols) ---"; show cfg.parsefile "docs/legacy-config-example.q";
--1 "--- .toml settings (strings) ---"; show cfg.parsefile "appconfig/settings/rdb1.toml";
+-1 "--- .q settings ---"; show cfg.parsefile "appconfig/settings/rdb1.q";
+-1 "--- .toml settings ---"; show cfg.parsefile "appconfig/settings/rdb1.toml";
 \\
 EOF
-#> --- .q settings (symbols) ---
-#> tickerplanttypes| `tickerplant      hdbdir| `hdb   replaylog| 1b   reloadenabled| 1b  ...
-#> --- .toml settings (strings) ---
-#> tickerplanttypes| "tickerplant"     hdbdir| "hdb"  replaylog| 1b   reloadenabled| 1b  ...
+#> --- .q settings ---
+#> tickerplanttypes| `segmentedchainedtp   hdbdir| `hdb   replaylog| 1b   reloadenabled| 1b  ...
+#> --- .toml settings ---
+#> tickerplanttypes| "segmentedchainedtp"   hdbdir| "hdb"  replaylog| 1b   reloadenabled| 1b  ...
 ```
 
-Same keys; the only difference is value *type* — `.q` symbols vs TOML strings (TOML has no symbol
-type). Modules normalise with `` `$ `` at point of use, so the identical module code consumes either
-format unchanged.
+Same keys; the difference is value *type*. TOML has no symbol or timespan type, so it gives strings
+where the `.q` gives `` `hdb `` or `0D00:00:10`. Modules normalise at point of use, so the same module
+code reads either format.
 
 ---
 

@@ -1,0 +1,6 @@
+/ tickerplant1 settings - the same as tickerplant1.toml; keep one. If both are present, .toml wins on any key both set.
+/ Schema comes from the app's database.q (di.torq.proc.tickerplant's default schemafile). eodtime
+/ rolls at GMT midnight by default (rolltimezone / datatimezone / rolltimeoffset omitted).
+
+/ publishing is immediate unless q is started with -t <ms>, which batches and flushes every -t ms
+tplogdir:`tplog                 / relative to TORQXAPPHOME; a per-date log tp<date> is kept here
