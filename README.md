@@ -571,6 +571,22 @@ EOF
 - Each connection shows one error at connect time: the connecting process asks for
   `.proc.getattributes[]`, which these processes don't define.
 
+### Heartbeats
+
+Every process also publishes a `heartbeat` row every 30s (`di.torq.heartbeat`, wired in by
+di.torq). Nothing subscribes by default. To watch them, set `heartbeatsubscribeenabled = true` and
+`heartbeatsubscribetypes` (proctypes, or `ALL`) in a process's settings; it then flags processes whose
+heartbeats stop arriving in `.m.di.0torq.0heartbeat.hb`. Or subscribe from a q session, which
+then shows rdb1's heartbeat every 30s:
+
+```q
+upd:{[t;x] show x};
+h:hopen`::5304;
+h(`.ps.subscribe;`heartbeat;`);
+```
+
+stp1 and sctp1 refuse the subscription: their pub/sub tables exclude `heartbeat`.
+
 ---
 
 ## 12. Tickerplant type: segmented or classic
