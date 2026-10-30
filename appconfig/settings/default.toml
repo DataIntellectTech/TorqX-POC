@@ -12,3 +12,9 @@ discoveryretry = "0D00:00:10"
 
 # ms; the wait loop dials every dead peer on each poll
 hopentimeout = 200
+
+# access control, every process. Rules come from appconfig/permissions/ (app) layered on
+# kdbx-modules/di/torq/permissions/ (framework). Processes authenticate to each other with the
+# credentials in appconfig/passwords/default.txt - see kdbx-modules/di/permissions.
+[permissions]
+enabled = true

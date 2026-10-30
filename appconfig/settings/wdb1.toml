@@ -27,3 +27,11 @@ reloadorder = "hdb rdb idb"        # reload the hdb first (new partition), then 
 [numtab]
 trade = 500
 quote = 500
+
+# Permissions OFF on the wdb, so idb1 can start. The idb reads the wdb's paths as
+# (each;value;`.wdb.savedir`...), which the permission model mis-evaluates - TorQ has the same
+# defect and the same consequence (see kdbx-modules/di/permissions/permissions.md, "List-form IPC
+# messages and eval"). A section replaces rather than merges, so this overrides default.toml.
+# TRADE-OFF: the wdb accepts unauthenticated connections. Drop idb1 if that is not acceptable.
+[permissions]
+enabled = false

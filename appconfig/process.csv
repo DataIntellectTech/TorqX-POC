@@ -13,3 +13,4 @@ localhost,5309,idb,idb1,1
 localhost,5310,housekeeping,housekeeping1,1
 localhost,5306,gateway,gateway1,1
 localhost,0,tickerlogreplay,tickerlogreplay1,0
+localhost,0,compression,compression1,0

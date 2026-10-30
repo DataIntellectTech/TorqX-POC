@@ -26,3 +26,10 @@ reloadorder:`hdb`rdb`idb        / reload the hdb first (new partition), then the
 / to an empty dict, so numrows applied to everything). At the feed's rate trade would need
 / ~85 minutes to reach 50000 and nothing would be written intraday.
 numtab:`trade`quote!500 500
+
+/ Permissions OFF on the wdb, so idb1 can start. The idb reads the wdb's paths as
+/ (each;value;`.wdb.savedir`...), which the permission model mis-evaluates - TorQ has the same
+/ defect and the same consequence (see kdbx-modules/di/permissions/permissions.md, "List-form IPC
+/ messages and eval"). A section replaces rather than merges, so this overrides default.q.
+/ TRADE-OFF: the wdb accepts unauthenticated connections. Drop idb1 if that is not acceptable.
+permissions:enlist[`enabled]!enlist 0b

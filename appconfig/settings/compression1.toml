@@ -1,0 +1,15 @@
+# compression1 settings. A one-shot batch job: it compresses the hdb once and exits, so its
+# process.csv row has no port and startwithall=0 - a stack start must not rewrite the hdb.
+# Run it on demand:   torqx.sh start compression1
+# See kdbx-modules/di/torq/proc/compression.
+
+csvpath = ":appconfig/compressionconfig.csv"   # which table/column gets which algorithm
+hdbpath = ":hdb"                               # hdb root, under TORQXDATAHOME
+maxage = 365                                   # only scan partitions this many days old or newer
+exitonfinish = true                            # terminate when the pass completes
+
+# NOTE: the hdb this repo ships has one tiny partition (its largest column is a few KB), and kdb
+# does not compress a file smaller than the logical block size - 2^17 here. A run against it
+# therefore reports "Memory savings from compression: 0.00MB" and changes nothing. That is
+# correct behaviour, not a failure. To see it work, point it at a real partition:
+#   torqx.sh start compression1 -hdbpath :/path/to/a/populated/hdb
