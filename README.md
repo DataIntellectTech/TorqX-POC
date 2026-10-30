@@ -67,11 +67,16 @@ Everything else in `setenv.sh` is generic (no user/host paths). `TORQXDATAHOME` 
 `TORQXAPPHOME` (mirroring TorQ's `TORQAPPHOME`/`TORQDATAHOME`) so runtime data (hdb, tp-log, wdb
 working dir) can live on a separate volume in a real deployment; here they coincide.
 
+**Permissions are on**, so every connection needs a user. The snippets below connect as the demo's
+inter-process user, `torqx` (password `torqxpass`, from `appconfig/passwords/default.txt` and
+`appconfig/permissions/default.q`), read from `TORQXCRED`.
+
 **Source it (once, for interactive use) and start the stack:**
 
 ```bash
 source ./setenv.sh
-waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1;500);0]" >/dev/null 2>&1; do sleep 0.5; done; }   # block until port $1 answers
+export TORQXCRED=torqx:torqxpass
+waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1:$TORQXCRED;500);0]" >/dev/null 2>&1; do sleep 0.5; done; }   # block until port $1 answers
 
 torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
 torqx.sh start stp1; waitq 5311
@@ -100,7 +105,7 @@ aborted stays up. `torqx_init.q` sets `result` only once init completes, so ask 
 
 ```bash
 for p in 5307 5311 5312 5302 5303 5304 5305 5306 5309 5310; do
-  q -q <<<"h:hopen\`::$p; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
+  q -q <<<"h:hopen\`::$p:$TORQXCRED; -1 \"$p \",string @[h;\"result\`procname\";\`INITFAILED]; exit 0"
 done
 #> 5307 discovery1
 #> 5311 stp1  ...
@@ -110,7 +115,7 @@ A backend that comes up after the gateway (a restarted rdb, say) is not routed t
 gateway re-registers its backends. Refresh it by hand:
 
 ```bash
-q -q <<<'h:hopen`::5306; h(`.gw.reload;`reloadend); exit 0'
+q -q <<<'h:hopen`$"::5306:",getenv`TORQXCRED; h(`.gw.reload;`reloadend); exit 0'
 ```
 
 > **Shared hosts: `TORQXSTACKID` must be unique per user.** `torqx.sh` keys both its liveness
@@ -135,7 +140,7 @@ in-memory) + hdb (history, on-disk) and joins:
 
 ```bash
 q -q <<'EOF'
-h:hopen`::5306;
+h:hopen`$"::5306:",getenv`TORQXCRED;
 neg[h](`.gw.asyncexec;"select cnt:count i by sym from trade";`rdb`hdb);
 show h[];
 \\
@@ -472,7 +477,7 @@ last, once rdb1 answers.
 
 ```bash
 q -q <<'EOF'
-h:hopen`::5307;
+h:hopen`$"::5307:",getenv`TORQXCRED;
 show h"select procname,proctype,hpup,w from .servers.SERVERS";
 \\
 EOF
@@ -550,7 +555,7 @@ grep "replaying log file\|rdb\] subscribed" /tmp/torqx_${TORQXSTACKID}_rdb1.log
 
 ```bash
 q -q <<'EOF'
-q:{[p;x] h:hopen p; r:h x; hclose h; r};
+q:{[p;x] h:hopen`$(string p),":",getenv`TORQXCRED; r:h x; hclose h; r};
 -1 "chainedtp1: ",-3!q[`::5301;".u.icounts"];
 -1 "rdb1:       ",-3!q[`::5304;"`trade`quote!(count trade;count quote)"];
 \\
@@ -574,7 +579,7 @@ queries:
 
 ```bash
 q -q <<'EOF'
-h:hopen`::5306;
+h:hopen`$"::5306:",getenv`TORQXCRED;
 show h"select ipa,u,startp,lastp,hits,errs,sz,live:not null w from .clients.clients";
 \\
 EOF
@@ -597,7 +602,7 @@ heartbeat every 30s:
 
 ```q
 upd:{[t;x] show x};
-h:hopen`::5304;
+h:hopen`$"::5304:",getenv`TORQXCRED;
 h(`.ps.subscribe;`heartbeat;`);
 ```
 
