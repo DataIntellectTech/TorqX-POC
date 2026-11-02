@@ -5,11 +5,14 @@
 
 csvpath = ":appconfig/compressionconfig.csv"   # which table/column gets which algorithm
 hdbpath = ":hdb"                               # hdb root, under TORQXDATAHOME
-maxage = 365                                   # only scan partitions this many days old or newer
+# maxage omitted -> 30, the framework default, as TorQ's own settings file ships
 exitonfinish = true                            # terminate when the pass completes
 
-# NOTE: the hdb this repo ships has one tiny partition (its largest column is a few KB), and kdb
-# does not compress a file smaller than the logical block size - 2^17 here. A run against it
-# therefore reports "Memory savings from compression: 0.00MB" and changes nothing. That is
-# correct behaviour, not a failure. To see it work, point it at a real partition:
+# NOTE: a run against the hdb this repo ships compresses nothing and reports
+# "Memory savings from compression: 0.00MB". That is correct, not a failure - its only
+# partition is 2015.01.07, far outside the 30-day maxage window. Even in range it would
+# compress nothing: its largest column is a few KB, under the 2^17 block size, and kdb does
+# not compress a file smaller than one block.
+# On a stack that has run EODs the recent partitions ARE in range and do get compressed.
+# To see it work against a known partition:
 #   torqx.sh start compression1 -hdbpath :/path/to/a/populated/hdb

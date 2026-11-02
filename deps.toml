@@ -3,7 +3,7 @@
 # kdbx-modules/di/torq/depcheck/depcheck.md for the format and failure behaviour.
 
 [dependencies]
-"di.torq" = "0.5.0"
+"di.torq" = "0.6.0"
 "di.torq.config" = "0.2.0"
 "di.util.log" = "0.1.0"
 "di.torq.proc.hdb" = "0.1.0"
@@ -31,3 +31,5 @@
 "di.torq.proc.chainedtp" = "0.3.0"
 "di.clienttracking" = "0.2.0"
 "di.permissions" = "0.1.0"
+"di.torq.proc.compression" = "0.1.0"
+"di.compression" = "0.1.0"
