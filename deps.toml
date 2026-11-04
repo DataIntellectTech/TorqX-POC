@@ -30,6 +30,7 @@
 "di.torq.proc.discovery" = "0.1.0"
 "di.torq.proc.chainedtp" = "0.3.0"
 "di.clienttracking" = "0.2.0"
+"di.torq.heartbeat" = "0.1.0"
 "di.permissions" = "0.1.0"
 "di.torq.proc.compression" = "0.1.0"
 "di.compression" = "0.1.0"
