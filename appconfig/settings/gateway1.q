@@ -6,6 +6,7 @@
 / Also gates queries during the wdb's EOD reload. See kdbx-modules/di/torq/proc/gateway.
 
 backendtypes:`rdb`hdb`idb       / proctype(s) to connect to and route queries across
+startupdeps:`rdb`hdb`idb        / wait for these to connect before serving queries
 / synccallsallowed omitted -> 0b (deferred-sync / async only)
 / errorprefix omitted -> "error: "
 
