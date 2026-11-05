@@ -1,0 +1,7 @@
+[dependencies]
+"di.torq" = "0.6.0"
+"di.torq.proc.segmentedtp" = "0.2.0"
+"di.torq.proc.rdb" = "0.4.0"
+"di.torq.proc.wdb" = "0.3.0"
+"di.torq.proc.idb" = "0.1.0"
+"di.torq.proc.hdb" = "0.1.0"

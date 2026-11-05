@@ -1,0 +1,3 @@
+# wdb1 starts before idb1 and rdb1, and reaches them on this retry
+retry = "0D00:00:02"
+heartbeatenabled = false

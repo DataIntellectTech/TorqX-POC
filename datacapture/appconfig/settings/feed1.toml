@@ -1,0 +1,6 @@
+connections = ["segmentedtp"]
+waittimeout = 30000
+publishms = 200
+batch = 5
+syms = ["AAPL", "AMD", "GOOG", "IBM", "MSFT"]
+prices = [180.0, 120.0, 140.0, 190.0, 410.0]

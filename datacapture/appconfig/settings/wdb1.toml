@@ -1,0 +1,10 @@
+# sole writer to disk. orders and depth flush every second and reload idb1 (numrows = 0);
+# trade and quote stay in memory until end of day (numtab = 0W).
+tickerplanttypes = "segmentedtp"
+settimer = 1
+numrows = 0
+replaynumrows = 100000
+
+[numtab]
+trade = 9223372036854775807
+quote = 9223372036854775807

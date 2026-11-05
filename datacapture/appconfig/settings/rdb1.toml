@@ -1,0 +1,4 @@
+# holds tables A and B; wdb1 writes them down at end of day and calls reload[date]
+tickerplanttypes = "segmentedtp"
+subscribeto = ["trade", "quote"]
+reloadenabled = true
