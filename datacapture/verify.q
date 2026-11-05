@@ -169,6 +169,34 @@ eod2:{
   ohlccheck[];
   }
 
+/ lvc1 against the never-restarted lvc2 and against rdb1's tables, for the stream gone quiet
+lvcompare:{
+  a:`sym xasc hopen[`::24106]".lastvalue.cache";
+  b:`sym xasc hopen[`::24107]".lastvalue.cache";
+  c:`sym xasc r"(select ltp:last price by sym from trade) uj select last bid,last ask by sym from quote";
+  hdr "syms: lvc1, lvc2, rdb1";show `lvc1`lvc2`rdb1!count each (a;b;c);
+  hdr "lvc1 matches lvc2?";show a~b;
+  hdr "lvc1 matches rdb1?";show a~c;
+  hdr "lvc2 matches rdb1?";show b~c;
+  hdr "rows in lvc2 not in lvc1";show 20 sublist (0!b) except 0!a;
+  hdr "rows in lvc1 not in lvc2";show 20 sublist (0!a) except 0!b;
+  hdr "first rows of lvc1";show 5 sublist a;
+  }
+
+/ one trade and one quote per ms, each with a unique sym: q verify.q burst <seconds> <prefix>
+burst:{
+  end:.z.p+0D00:00:01*"J"$.z.x 1;
+  pre:.z.x 2;
+  n:0;
+  while[.z.p<end;
+    s:`$pre,string n+:1;
+    neg[tp](`.u.upd;`trade;(enlist s;enlist n+0f;enlist 1;enlist`buy;enlist"N"));
+    neg[tp](`.u.upd;`quote;(enlist s;enlist n-0.5;enlist n+0.5;enlist 1;enlist 1;enlist"N"));
+    neg[tp][];
+    system"sleep 0.001"];
+  -1 pre," sent ",string n;
+  }
+
 / every hdb date against the logs, and ohlc; no roll
 check:{reconcile each hd".Q.PV";ohlccheck[];}
 

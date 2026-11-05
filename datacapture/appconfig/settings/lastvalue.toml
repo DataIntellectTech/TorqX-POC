@@ -1,0 +1,2 @@
+connections = ["segmentedtp"]
+tpwaittimeout = 30000

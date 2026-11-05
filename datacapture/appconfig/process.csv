@@ -4,4 +4,5 @@ localhost,24101,hdb,hdb1
 localhost,24102,wdb,wdb1
 localhost,24103,idb,idb1
 localhost,24104,rdb,rdb1
+localhost,24106,lastvalue,lvc1
 localhost,24105,feed,feed1
