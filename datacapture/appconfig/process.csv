@@ -1,0 +1,8 @@
+host,port,proctype,procname
+localhost,5401,segmentedtp,stp1
+localhost,5402,hdb,hdb1
+localhost,5403,rdb,rdb1
+localhost,5404,wdb,wdb1
+localhost,5405,idb,idb1
+localhost,5406,feed,feed1
+localhost,5407,lvc,lvc1

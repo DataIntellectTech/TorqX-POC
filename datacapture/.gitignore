@@ -1,0 +1,6 @@
+# runtime data
+/hdb/
+/wdb/
+/tplog/
+# the repo root ignores wdb/ at any depth
+!code/wdb/
