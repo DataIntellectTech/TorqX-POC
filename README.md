@@ -82,7 +82,7 @@ waitq() { until q -q <<<"exit 0=@[hopen;(\`::$1:$TORQXCRED;500);0]" >/dev/null 2
 torqx.sh start discovery1; waitq 5307      # discovery first - every other process finds its peers through it (§9)
 torqx.sh start stp1; waitq 5311
 torqx.sh start sctp1; waitq 5312           # rdb1 subscribes to the chained segmented tickerplant (§12)
-for p in hdb loader1 feed1 rdb1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
+for p in hdb loader1 feed1 rdb1 sortworker1 sortworker2 sort1 wdb1 idb1 housekeeping1; do torqx.sh start $p; done
 waitq 5304; torqx.sh start gateway1        # gateway last, once rdb1 answers - it registers its backends at startup
 torqx.sh status
 #> discovery1      discovery  up    pid=...
@@ -94,6 +94,9 @@ torqx.sh status
 #> feed1           feed       up    pid=...
 #> rdb1            rdb        up    pid=...
 #> wdb1            wdb        up    pid=...
+#> sort1           sort       up    pid=...
+#> sortworker1     sortworker up    pid=...
+#> sortworker2     sortworker up    pid=...
 #> idb1            idb        up    pid=...
 #> housekeeping1   housekeeping up    pid=...
 #> gateway1        gateway    up    pid=...
@@ -188,11 +191,17 @@ finds everything where they expect it.
 | Process behaviour | `code/processes/<proctype>.q` | built-ins are `di.*` **modules**; only app-specific procs are files |
 | Dependencies | implicit | explicit **`deps.toml`**, version-checked at startup (§8) |
 | Tickerplant | segmented (STP) | segmented (`stp1`, chained `sctp1`); classic TP by config (§12) |
-| Not yet built | monitor, reporter, filealerter, metrics, DQC/DQE, sort/sort-worker, kill | — (deferred per plan) |
+| Not yet built | monitor, reporter, filealerter, metrics, DQC/DQE, kill | — (deferred per plan) |
 
 The `code/<proctype>/*.q` convention is preserved: `code/rdb/examplequeries.q` (the FSP's example
 `countbysym`/`hloc`) is auto-loaded into the rdb at startup, at root, exactly as TorQ's
 `.proc.loadprocesscode` does.
+
+**End of day uses the FSP's sort processes.** wdb1 saves the day and hands it to sort1, which
+sorts it with sortworker1 and sortworker2, moves it into the hdb and reloads the hdb, rdb, idb and
+gateway. sort1 and the sortworkers run the wdb module too, started with `-parentproctype wdb` from
+`process.csv`'s `extras` column as in the FSP, so they share wdb1's `settings/wdb.toml` (savedir,
+hdbdir, reload order); di.torq's builtin sort and sortworker settings put them in sort mode.
 
 ---
 
@@ -595,7 +604,7 @@ EOF
 wdb1 holds the same rows, split between memory and the flushed partition under `wdb/`.
 
 **End of day** reaches rdb1 through chainedtp1, which rolls to a new log, and wdb1 directly. The wdb
-writes the partition into the hdb and reloads the hdb, rdb, idb and gateway.
+hands the day to sort1, which writes the partition into the hdb and reloads the hdb, rdb, idb and gateway (§2).
 
 ---
 
