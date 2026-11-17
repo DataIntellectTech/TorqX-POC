@@ -379,15 +379,29 @@ app/<proctype> → builtin/<procname> → app/<procname>` — and for each tier 
 `<name>.toml`**, merging the two; `.toml` wins any key both set.
 
 **A parent type.** Started with `-parentproctype <name>`, a process also reads the `<name>` tier between
-`default` and its own type: `settings/<name>.toml`, `code/<name>/` and `passwords/<name>.txt`. Here
-housekeeping1 takes its connection user from a parent's password file:
+`default` and its own type: `settings/<name>.toml`, `code/<name>/` and `passwords/<name>.txt`. `torqx.sh`
+passes the flag through to the process. Here housekeeping1 is started with a parent type `pptp` and takes
+its connection user from `passwords/pptp.txt`:
 
 ```bash
+# 1. give the parent type its own password file (a dummy user, so the effect is visible)
 printf 'torqx:pptpdemo\n' > appconfig/passwords/pptp.txt
-torqx.sh restart housekeeping1 -parentproctype pptp; waitq 5310
+
+# 2. start housekeeping1 with the parent type; the process logs the flag it read
+torqx.sh stop housekeeping1
+torqx.sh start housekeeping1 -parentproctype pptp; waitq 5310
+grep parentproctype /tmp/torqx_${TORQXSTACKID}_housekeeping1.log
+#> ... [INFO] [init] read in process parameter of parentproctype=pptp
+
+# 3. its connections now use the user from passwords/pptp.txt, not default.txt
 q -q <<<"h:hopen \`::5310:$TORQXCRED; -1 string h\".servers.USERPASS\"; exit 0"
 #> torqx:pptpdemo
-rm appconfig/passwords/pptp.txt; torqx.sh restart housekeeping1   # back to default.txt
+
+# 4. put it back: without the file and the flag it uses default.txt again
+rm appconfig/passwords/pptp.txt
+torqx.sh restart housekeeping1; waitq 5310
+q -q <<<"h:hopen \`::5310:$TORQXCRED; -1 string h\".servers.USERPASS\"; exit 0"
+#> torqx:torqxpass
 ```
 
 **Live: add a setting, restart, see it take effect.** `feed1.toml` drives the feed's publish
