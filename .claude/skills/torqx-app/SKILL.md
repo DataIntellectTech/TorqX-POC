@@ -54,7 +54,7 @@ Run from the app directory (it sources `./setenv.sh`, or `$SETENV`):
 
 | Command | Does |
 |---|---|
-| `torqx.sh start [procname]` | start one process, or all; `--tmux`/`-t` for a tmux pane; extra args pass through |
+| `torqx.sh start [procname]` | start one process, or all; `--tmux` for a tmux pane; extra args (e.g. q's `-t 1000`) pass through |
 | `torqx.sh stop [procname]` | kill it and remove its tmux session (refused if a systemd unit exists) |
 | `torqx.sh restart [procname]` | stop, then start |
 | `torqx.sh status` | up/down + pid, `(tmux)` tags |
