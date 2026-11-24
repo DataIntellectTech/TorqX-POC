@@ -18,3 +18,7 @@ wdb/
 hdb/*
 !hdb/2015.01.07/
 !hdb/sym
+
+# filealerter1's drop directories and its already-processed table
+/filealerter/
+/filealerterprocessed/
