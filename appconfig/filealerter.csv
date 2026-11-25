@@ -1,0 +1,3 @@
+path,match,function,newonly,movetodirectory
+{TORQXDATAHOME}/filealerter/in,trades_*.csv,loadtrades,1,{TORQXDATAHOME}/filealerter/done
+{TORQXDATAHOME}/filealerter/in,*.pcap,loadpcap,1,{TORQXDATAHOME}/filealerter/done
