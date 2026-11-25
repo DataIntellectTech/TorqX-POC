@@ -69,7 +69,8 @@ working dir) can live on a separate volume in a real deployment; here they coinc
 
 **Permissions are on**, so every connection needs a user. The snippets below connect as the demo's
 inter-process user, `torqx` (password `torqxpass`, from `appconfig/passwords/default.txt` and
-`appconfig/permissions/default.q`), read from `TORQXCRED`.
+`appconfig/permissions/default.q`), read from `TORQXCRED`. A process uses the most specific of
+`appconfig/passwords/{default|<parentproctype>|<proctype>|<procname>}.txt` for its own connections (§7).
 
 **Source it (once, for interactive use) and start the stack:**
 
@@ -372,9 +373,36 @@ it can run arbitrary q at load. That's not hypothetical: in the FSP itself,
 cleanly onto the flat/sectioned settings shape. (Chosen over YAML: no native q parser for either,
 and TOML's grammar is far more tractable to hand-build correctly.) `.q` remains fully supported.
 
-**The cascade.** `di.torq.config` merges, later tiers overriding earlier:
-`builtin/default → builtin/<proctype> → app/default → app/<proctype> → app/<procname>` — and for
-each tier it reads **`<name>.q`, then `<name>.toml`**, merging the two; `.toml` wins any key both set.
+**The cascade.** `di.torq.config` merges, later tiers overriding earlier, so a more specific name always wins:
+`builtin/default → app/default → [builtin/<parentproctype> → app/<parentproctype>] → builtin/<proctype> →
+app/<proctype> → builtin/<procname> → app/<procname>` — and for each tier it reads **`<name>.q`, then
+`<name>.toml`**, merging the two; `.toml` wins any key both set.
+
+**A parent type.** Started with `-parentproctype <name>`, a process also reads the `<name>` tier between
+`default` and its own type: `settings/<name>.toml`, `code/<name>/` and `passwords/<name>.txt`. `torqx.sh`
+passes the flag through to the process. Here housekeeping1 is started with a parent type `pptp` and takes
+its connection user from `passwords/pptp.txt`:
+
+```bash
+# 1. give the parent type its own password file (a dummy user, so the effect is visible)
+printf 'torqx:pptpdemo\n' > appconfig/passwords/pptp.txt
+
+# 2. start housekeeping1 with the parent type; the process logs the flag it read
+torqx.sh stop housekeeping1
+torqx.sh start housekeeping1 -parentproctype pptp; waitq 5310
+grep parentproctype /tmp/torqx_${TORQXSTACKID}_housekeeping1.log
+#> ... [INFO] [init] read in process parameter of parentproctype=pptp
+
+# 3. its connections now use the user from passwords/pptp.txt, not default.txt
+q -q <<<"h:hopen \`::5310:$TORQXCRED; -1 string h\".servers.USERPASS\"; exit 0"
+#> torqx:pptpdemo
+
+# 4. put it back: without the file and the flag it uses default.txt again
+rm appconfig/passwords/pptp.txt
+torqx.sh restart housekeeping1; waitq 5310
+q -q <<<"h:hopen \`::5310:$TORQXCRED; -1 string h\".servers.USERPASS\"; exit 0"
+#> torqx:torqxpass
+```
 
 **Live: add a setting, restart, see it take effect.** `feed1.toml` drives the feed's publish
 cadence; the feed logs it at startup:
