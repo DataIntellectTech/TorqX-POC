@@ -1,0 +1,4 @@
+# sort proctype settings (sort1). It inherits savedir, hdbdir and the reload settings from wdb.toml
+# through -parentproctype wdb; di.torq's builtin sort settings set mode = "sort".
+
+workers = 2                        # sort with -s -2, spreading the per-table sorts over sortworker1 and sortworker2

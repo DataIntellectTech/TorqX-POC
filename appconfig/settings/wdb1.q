@@ -1,20 +1,16 @@
 / wdb1 settings - the same as wdb1.toml; keep one. If both are present, .toml wins on any key both set.
 / Subscribes to the tickerplant, replays the day's log to disk on startup, then during the day
 / incrementally writes trade/quote to a TEMP partition as they fill. At end of day it flushes what
-/ remains, sorts each partition, moves it into the HDB, and reloads the HDB and RDB (rdb1 runs
-/ reloadenabled, so it drops its prior day on the reload). Schema comes from the tickerplant (via
-/ subdetails), not a local database.q. See kdbx-modules/di/torq/proc/wdb.
+/ remains and hands the day to sort1 (mode, savedir and hdbdir are in wdb.q), which sorts it on the
+/ sortworkers, moves it into the HDB, and reloads the HDB and RDB (rdb1 runs reloadenabled, so it
+/ drops its prior day on the reload). Schema comes from the tickerplant (via subdetails), not a
+/ local database.q. See kdbx-modules/di/torq/proc/wdb.
 
 tickerplanttypes:`segmentedtp   / classic: `tickerplant
-hdbtypes:`hdb                   / proctype(s) to move partitions to / reload at EOD
-rdbtypes:`rdb                   / proctype(s) to reload[date] at EOD (drop their prior day)
-savedir:`wdb                    / wdb working-data root (relative to TORQXDATAHOME)
-hdbdir:`hdb                     / HDB root to move sorted partitions into
 numrows:500                     / small threshold so the POC feed triggers intraday flushes
 settimer:5                      / seconds between flush checks
 replaylog:1b                    / replay the tp log on startup (to disk, bounded memory)
 tpwaittimeout:30000             / ms to block waiting for the tickerplant at startup
-reloadorder:`hdb`rdb`idb        / reload the hdb first (new partition), then the rdb (drop prior day), then the idb
 / immediate omitted -> 0b (only flush tables over numrows)
 / subscribeto / subscribesyms omitted -> all tables, all syms
 / ignorelist omitted -> `heartbeat`logmsg
